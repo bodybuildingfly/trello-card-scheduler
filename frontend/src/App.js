@@ -411,8 +411,10 @@ function App() {
   const checkTrelloConfig = async () => {
     try {
         const res = await axios.get(`${API_BASE_URL}/api/settings`);
-        const { TRELLO_API_KEY, TRELLO_API_TOKEN, TRELLO_BOARD_ID, TRELLO_LIST_ID } = res.data;
-        if (TRELLO_API_KEY && TRELLO_API_TOKEN && TRELLO_BOARD_ID && TRELLO_LIST_ID) {
+        const { isConfigured, TRELLO_BOARD_ID, TRELLO_LIST_ID } = res.data;
+
+        // Use the 'isConfigured' flag from the backend, and check for board/list IDs
+        if (isConfigured && TRELLO_BOARD_ID && TRELLO_LIST_ID) {
             setIsTrelloConfigured(true);
             return true;
         } else {

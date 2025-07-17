@@ -277,10 +277,29 @@ app.post('/api/trello/test', async (req, res) => {
     }
 });
 
+/* Old version
 app.get('/api/settings', (req, res) => {
     // Never send sensitive keys to the frontend
     const { TRELLO_API_KEY, TRELLO_API_TOKEN, ...safeSettings } = appSettings;
     res.json(safeSettings);
+}); */
+
+app.get('/api/settings', (req, res) => {
+    // Start with a copy of all current settings
+    const responseSettings = { ...appSettings };
+
+    // Mask sensitive keys for frontend display.
+    // This tells the frontend that a value is present without exposing it.
+    responseSettings.TRELLO_API_KEY = appSettings.TRELLO_API_KEY ? '******' : '';
+    responseSettings.TRELLO_API_TOKEN = appSettings.TRELLO_API_TOKEN ? '******' : '';
+
+    // Add an `isConfigured` flag for the frontend banner logic, as discussed.
+    // This is the most secure way for the frontend to know the configuration status.
+    responseSettings.isConfigured = !!appSettings.TRELLO_API_KEY && !!appSettings.TRELLO_API_TOKEN &&
+                                   !!appSettings.TRELLO_BOARD_ID && !!appSettings.TRELLO_LIST_ID;
+
+    // Send the modified settings object to the frontend
+    res.json(responseSettings);
 });
 
 app.put('/api/settings', async (req, res) => {
@@ -292,7 +311,7 @@ app.put('/api/settings', async (req, res) => {
             // Only update keys that exist in our app settings
             if (appSettings.hasOwnProperty(key)) {
                 // For sensitive keys, only update if a new value is provided.
-                if ((key === 'TRELLO_API_KEY' || key === 'TRELLO_API_TOKEN') && !newSettings[key]) {
+                if ((key === 'TRELLO_API_KEY' || key === 'TRELLO_API_TOKEN') && newSettings[key] === '') {
                     continue; // Skip update if the password field is empty
                 }
                 await client.query('UPDATE settings SET value = $1 WHERE key = $2', [newSettings[key], key]);
@@ -303,7 +322,7 @@ app.put('/api/settings', async (req, res) => {
         await loadSettings(); // Reload settings into the application
         reinitializeCronJob(); // Restart the cron job with the new schedule
 
-        await logAuditEvent('INFO', 'Application settings updated.');
+        // await logAuditEvent('INFO', 'Application settings updated.');
         res.status(200).json({ message: 'Settings updated successfully.' });
     } catch (error) {
         await client.query('ROLLBACK');
