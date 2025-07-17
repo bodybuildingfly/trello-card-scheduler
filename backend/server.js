@@ -16,7 +16,14 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'build')));
+// app.use(express.static(path.join(__dirname, 'build')));
+app.use(express.static(path.join(__dirname, '../frontend/build')));
+
+// For any other route not handled by the API, serve the React app's index.html
+app.get('*', (req, res) => {
+    // Corrected path for sending index.html
+    res.sendFile(path.resolve(__dirname, '../frontend', 'build', 'index.html'));
+});
 
 // --- Global Settings Object ---
 let appSettings = {};
