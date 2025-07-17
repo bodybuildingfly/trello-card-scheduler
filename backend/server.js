@@ -16,14 +16,8 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 app.use(express.json());
+// Replaced with section near the bottom
 // app.use(express.static(path.join(__dirname, 'build')));
-app.use(express.static(path.join(__dirname, '../frontend/build')));
-
-// For any other route not handled by the API, serve the React app's index.html
-app.get('*', (req, res) => {
-    // Corrected path for sending index.html
-    res.sendFile(path.resolve(__dirname, '../frontend', 'build', 'index.html'));
-});
 
 // --- Global Settings Object ---
 let appSettings = {};
@@ -458,6 +452,20 @@ app.delete('/api/records/:id', async (req, res) => {
     } catch (err) {
         res.status(500).json({ error: 'Internal server error' });
     }
+});
+
+// ====================================================================
+// IMPORTANT: SERVE FRONTEND STATIC FILES LAST
+// Any routes defined after this will not be hit if a static file or
+// the index.html can be served.
+// ====================================================================
+
+// --- Serve Frontend Static Files ---
+app.use(express.static(path.join(__dirname, '../frontend/build')));
+
+// For any other route not handled by the API, serve the React app's index.html
+app.get('*', (req, res) => {
+    res.sendFile(path.resolve(__dirname, '../frontend', 'build', 'index.html'));
 });
 
 // --- Main Application Start Function ---
