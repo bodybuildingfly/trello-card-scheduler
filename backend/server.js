@@ -407,7 +407,8 @@ app.get('/api/records', async (req, res) => {
         const result = await pool.query('SELECT * FROM records ORDER BY id ASC');
         res.status(200).json(result.rows);
     } catch (err) {
-        res.status(500).json({ error: 'Internal server error' });
+        // res.status(500).json({ error: 'Internal server error' });
+        res.status(500).json({ error: 'Failed to load scheduled cards.', details: err.message });
     }
 });
 
