@@ -1,0 +1,219 @@
+import { useState, useEffect } from 'react';
+import apiClient from '../api';
+
+const Spinner = () => <div className="flex justify-center items-center p-10"><div className="w-10 h-10 border-4 border-sky-500 border-t-transparent rounded-full animate-spin"></div></div>;
+
+const SettingsPage = ({ onSettingsSaved }) => {
+    // Overall state
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState('');
+    const [success, setSuccess] = useState('');
+
+    // Step 1: Credentials State
+    const [apiKey, setApiKey] = useState('');
+    const [apiToken, setApiToken] = useState('');
+    const [isTesting, setIsTesting] = useState(false);
+    const [testResult, setTestResult] = useState({ status: '', message: '' });
+    const [areCredentialsSaved, setAreCredentialsSaved] = useState(false);
+
+    // Step 2: Board/List/Label State
+    const [boards, setBoards] = useState([]);
+    const [lists, setLists] = useState([]);
+    const [labels, setLabels] = useState([]);
+    const [doneLists, setDoneLists] = useState([]);
+    const [isLoadingBoards, setIsLoadingBoards] = useState(false);
+    const [isLoadingLists, setIsLoadingLists] = useState(false);
+    const [isLoadingLabels, setIsLoadingLabels] = useState(false);
+    
+    // Step 3: Combined Form State
+    const [formData, setFormData] = useState({
+        TRELLO_BOARD_ID: '',
+        TRELLO_TO_DO_LIST_ID: '',
+        TRELLO_DONE_LIST_ID: '',
+        TRELLO_LABEL_ID: '',
+        CRON_SCHEDULE: '0 1 * * *',
+    });
+
+    // Fetch initial settings to determine UI state
+    useEffect(() => {
+        const fetchInitialSettings = async () => {
+            setIsLoading(true);
+            try {
+                const res = await apiClient.get('/api/settings');
+                setAreCredentialsSaved(res.data.areCredentialsSaved);
+                setFormData({
+                    TRELLO_BOARD_ID: res.data.TRELLO_BOARD_ID || '',
+                    TRELLO_TO_DO_LIST_ID: res.data.TRELLO_TO_DO_LIST_ID || '',
+                    TRELLO_DONE_LIST_ID: res.data.TRELLO_DONE_LIST_ID || '',
+                    TRELLO_LABEL_ID: res.data.TRELLO_LABEL_ID || '',
+                    CRON_SCHEDULE: res.data.CRON_SCHEDULE || '0 1 * * *',
+                });
+            } catch (err) {
+                setError('Failed to load settings.');
+            }
+            setIsLoading(false);
+        };
+        fetchInitialSettings();
+    }, []);
+
+    // Fetch boards if credentials are saved
+    useEffect(() => {
+        if (areCredentialsSaved) {
+            setIsLoadingBoards(true);
+            apiClient.get('/api/trello/boards')
+                .then(res => setBoards(res.data))
+                .catch(() => setError('Could not fetch Trello boards. Please check credentials.'))
+                .finally(() => setIsLoadingBoards(false));
+        }
+    }, [areCredentialsSaved]);
+
+    // Fetch lists and labels when a board is selected
+    useEffect(() => {
+        if (formData.TRELLO_BOARD_ID) {
+            setIsLoadingLists(true);
+            apiClient.get(`/api/trello/lists/${formData.TRELLO_BOARD_ID}`)
+                .then(res => {
+                    setLists(res.data);
+                    setDoneLists(res.data); // Both dropdowns use the same list source
+                })
+                .catch(() => setError('Could not fetch lists for the selected board.'))
+                .finally(() => setIsLoadingLists(false));
+
+            setIsLoadingLabels(true);
+            apiClient.get(`/api/trello/labels/${formData.TRELLO_BOARD_ID}`)
+                .then(res => {
+                    setLabels(res.data);
+                })
+                .catch(() => setError('Could not fetch labels for the selected board.'))
+                .finally(() => setIsLoadingLabels(false));
+        }
+    }, [formData.TRELLO_BOARD_ID]);
+
+    const handleCredentialTest = async () => {
+        setIsTesting(true);
+        setTestResult({ status: '', message: '' });
+        try {
+            const res = await apiClient.post('/api/trello/credentials/test', { apiKey, apiToken });
+            setTestResult({ status: 'success', message: res.data.message });
+        } catch (err) {
+            setTestResult({ status: 'error', message: err.response?.data?.message || 'An unknown error occurred.' });
+        }
+        setIsTesting(false);
+    };
+
+    const handleCredentialSave = async () => {
+        try {
+            await apiClient.put('/api/settings/credentials', { TRELLO_API_KEY: apiKey, TRELLO_API_TOKEN: apiToken });
+            setSuccess('Credentials saved successfully!');
+            setAreCredentialsSaved(true);
+            setApiKey('');
+            setApiToken('');
+            setTestResult({ status: '', message: '' }); // Clear test result
+        } catch (err) {
+            setError(err.response?.data?.message || 'Failed to save credentials.');
+        }
+    };
+
+    const handleFormChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setError('');
+        setSuccess('');
+        try {
+            await apiClient.put('/api/settings', formData);
+            setSuccess('Settings saved successfully! The scheduler has been updated.');
+            if (onSettingsSaved) onSettingsSaved();
+        } catch (err) {
+            setError('Failed to save settings.');
+        }
+    };
+
+    if (isLoading) return <Spinner />;
+
+    return (
+        <div className="bg-white p-6 rounded-2xl shadow-lg max-w-3xl mx-auto">
+            <h2 className="text-3xl font-semibold text-slate-800 mb-6">Application Settings</h2>
+            <form onSubmit={handleSubmit} className="space-y-8">
+                {/* --- Step 1: Credentials --- */}
+                <div className="p-4 border rounded-lg">
+                    <h3 className="font-semibold text-lg mb-1">Step 1: Trello Credentials</h3>
+                    <p className="text-sm text-slate-500 mb-4">Securely connect to your Trello account.</p>
+                    <div className="space-y-4">
+                        <div>
+                            <label className="form-label">Trello API Key</label>
+                            <input type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} className="form-input" placeholder={areCredentialsSaved ? 'Saved (update if needed)' : 'Enter your Trello API Key'} />
+                        </div>
+                        <div>
+                            <label className="form-label">Trello API Token</label>
+                            <input type="password" value={apiToken} onChange={(e) => setApiToken(e.target.value)} className="form-input" placeholder={areCredentialsSaved ? 'Saved (update if needed)' : 'Enter your Trello API Token'} />
+                        </div>
+                        {testResult.message && (
+                            <div className={`p-3 rounded-lg text-center text-sm ${testResult.status === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                {testResult.message}
+                            </div>
+                        )}
+                        <div className="flex justify-end space-x-2">
+                             <button type="button" onClick={handleCredentialTest} disabled={isTesting || !apiKey || !apiToken} className="form-button-secondary">
+                                {isTesting ? 'Testing...' : 'Test Connection'}
+                            </button>
+                            <button type="button" onClick={handleCredentialSave} disabled={!apiKey || !apiToken} className="form-button-primary">Save Credentials</button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* --- Step 2: Board, List, and Label Selection --- */}
+                <div className={`p-4 border rounded-lg ${!areCredentialsSaved && 'opacity-50'}`}>
+                    <h3 className="font-semibold text-lg mb-1">Step 2: Target Board and Lists</h3>
+                    <p className="text-sm text-slate-500 mb-4">Choose where to create and track cards.</p>
+                    {!areCredentialsSaved && <p className="text-center text-sm text-slate-500 p-4">Please save your credentials first.</p>}
+                    <div className={`space-y-4 ${!areCredentialsSaved && 'pointer-events-none'}`}>
+                         <div>
+                            <label htmlFor="TRELLO_BOARD_ID" className="form-label">Trello Board</label>
+                            <select name="TRELLO_BOARD_ID" id="TRELLO_BOARD_ID" value={formData.TRELLO_BOARD_ID} onChange={handleFormChange} className="form-input" disabled={isLoadingBoards}>
+                                <option value="">{isLoadingBoards ? 'Loading...' : 'Select a Board'}</option>
+                                {boards.map(board => <option key={board.id} value={board.id}>{board.name}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label htmlFor="TRELLO_TO_DO_LIST_ID" className="form-label">ID for "To Do" List</label>
+                             <select name="TRELLO_TO_DO_LIST_ID" id="TRELLO_TO_DO_LIST_ID" value={formData.TRELLO_TO_DO_LIST_ID} onChange={handleFormChange} className="form-input" disabled={isLoadingLists || !formData.TRELLO_BOARD_ID}>
+                                <option value="">{isLoadingLists ? 'Loading...' : 'Select a List'}</option>
+                                {lists.map(list => <option key={list.id} value={list.id}>{list.name}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label htmlFor="TRELLO_DONE_LIST_ID" className="form-label">ID for "Done" List</label>
+                             <select name="TRELLO_DONE_LIST_ID" id="TRELLO_DONE_LIST_ID" value={formData.TRELLO_DONE_LIST_ID} onChange={handleFormChange} className="form-input" disabled={isLoadingLists || !formData.TRELLO_BOARD_ID}>
+                                <option value="">{isLoadingLists ? 'Loading...' : 'Select a List'}</option>
+                                {doneLists.map(list => <option key={list.id} value={list.id}>{list.name}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label htmlFor="TRELLO_LABEL_ID" className="form-label">ID for Label</label>
+                             <select name="TRELLO_LABEL_ID" id="TRELLO_LABEL_ID" value={formData.TRELLO_LABEL_ID} onChange={handleFormChange} className="form-input" disabled={isLoadingLabels || !formData.TRELLO_BOARD_ID}>
+                                <option value="">{isLoadingLabels ? 'Loading...' : 'Select a Label'}</option>
+                                {labels.map(label => <option key={label.id} value={label.id}>{label.name}</option>)}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                {/* --- Final Save --- */}
+                {error && <p className="text-red-600 bg-red-100 p-3 rounded-lg text-center">{error}</p>}
+                {success && <p className="text-green-600 bg-green-100 p-3 rounded-lg text-center">{success}</p>}
+
+                <div className="flex justify-end pt-4">
+                    <button type="submit" disabled={!areCredentialsSaved} className="form-button-primary w-full sm:w-auto">
+                        Save All Settings
+                    </button>
+                </div>
+            </form>
+        </div>
+    );
+};
+
+export default SettingsPage;
