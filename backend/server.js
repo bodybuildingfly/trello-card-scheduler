@@ -5,6 +5,7 @@ const path = require('path');
 const fs = require('fs');
 const https = require('https');
 const { CronJob } = require('cron');
+const axios = require('axios');
 
 const app = express();
 const port = 5000;
@@ -16,8 +17,6 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 app.use(express.json());
-// Replaced with section near the bottom
-// app.use(express.static(path.join(__dirname, 'build')));
 
 // --- Global Settings Object ---
 let appSettings = {};
@@ -58,8 +57,9 @@ const loadSettings = async () => {
             TRELLO_API_KEY: process.env.TRELLO_API_KEY || '',
             TRELLO_API_TOKEN: process.env.TRELLO_API_TOKEN || '',
             TRELLO_BOARD_ID: process.env.TRELLO_BOARD_ID || '',
-            TRELLO_LIST_ID: process.env.TRELLO_LIST_ID || '',
+            TRELLO_TO_DO_LIST_ID: process.env.TRELLO_TO_DO_LIST_ID || '',
             TRELLO_DONE_LIST_ID: process.env.TRELLO_DONE_LIST_ID || '',
+            TRELLO_LABEL_ID: process.env.TRELLO_LABEL_ID || '',
             CRON_SCHEDULE: process.env.CRON_SCHEDULE || '0 1 * * *',
         };
 
@@ -151,14 +151,14 @@ const getTrelloCard = async (cardId) => {
 };
 
 const createTrelloCard = async (schedule, dueDate) => {
-    const { TRELLO_API_KEY, TRELLO_API_TOKEN, TRELLO_LIST_ID, TRELLO_BOARD_ID } = appSettings;
+    const { TRELLO_API_KEY, TRELLO_API_TOKEN, TRELLO_TO_DO_LIST_ID, TRELLO_BOARD_ID, TRELLO_LABEL_ID } = appSettings;
     const members = await getTrelloBoardMembers(TRELLO_API_KEY, TRELLO_API_TOKEN, TRELLO_BOARD_ID);
     const member = members.find(m => m.fullName === schedule.owner_name);
     if (!member) {
         await logAuditEvent('ERROR', `Card creation failed: Trello member "${schedule.owner_name}" not found.`, { schedule });
         return null;
     }
-    const card = { name: schedule.title, desc: schedule.description, idList: TRELLO_LIST_ID, idMembers: [member.id], due: dueDate.toISOString() };
+    const card = { name: schedule.title, desc: schedule.description, idList: TRELLO_TO_DO_LIST_ID, idMembers: [member.id], idLabels: [TRELLO_LABEL_ID], due: dueDate.toISOString() };
     const postData = JSON.stringify(card);
     const options = { hostname: 'api.trello.com', path: `/1/cards?key=${TRELLO_API_KEY}&token=${TRELLO_API_TOKEN}`, method: 'POST', headers: { 'Content-Type': 'application/json', 'Content-Length': postData.length } };
     return new Promise((resolve, reject) => {
@@ -265,70 +265,135 @@ const runScheduler = async () => {
 };
 
 // --- API Routes ---
-app.post('/api/trello/test', async (req, res) => {
-    const { TRELLO_API_KEY, TRELLO_API_TOKEN, TRELLO_BOARD_ID } = req.body;
+
+// --- New Trello API Endpoints for Guided Setup ---
+
+app.post('/api/trello/credentials/test', async (req, res) => {
+    const { apiKey, apiToken } = req.body;
+    if (!apiKey || !apiToken) {
+        return res.status(400).json({ message: 'API Key and Token are required.' });
+    }
     try {
-        await getTrelloBoardMembers(TRELLO_API_KEY, TRELLO_API_TOKEN, TRELLO_BOARD_ID);
+        // Use a simple, lightweight call to Trello to verify credentials
+        await axios.get(`https://api.trello.com/1/members/me?key=${apiKey}&token=${apiToken}`);
         res.status(200).json({ message: 'Connection successful!' });
     } catch (error) {
-        let errorMessage = 'Connection failed. Check credentials and Board ID.';
-        if (error.statusCode === 401) errorMessage = 'Connection failed: Invalid API Key or Token.';
-        if (error.statusCode === 404) errorMessage = 'Connection failed: Board not found. Check Board ID.';
-        res.status(400).json({ message: errorMessage, details: error.data });
+        let errorMessage = 'Connection failed. Please check your API Key and Token.';
+        if (error.response && error.response.status === 401) {
+            errorMessage = 'Connection failed: Invalid API Key or Token.';
+        }
+        console.error('[ERROR] Trello credential test failed:', error.message);
+        res.status(401).json({ message: errorMessage });
     }
 });
 
-/* Old version
-app.get('/api/settings', (req, res) => {
-    // Never send sensitive keys to the frontend
-    const { TRELLO_API_KEY, TRELLO_API_TOKEN, ...safeSettings } = appSettings;
-    res.json(safeSettings);
-}); */
+app.get('/api/trello/boards', async (req, res) => {
+    const { TRELLO_API_KEY, TRELLO_API_TOKEN } = appSettings;
+    if (!TRELLO_API_KEY || !TRELLO_API_TOKEN) {
+        return res.status(400).json({ message: 'Trello credentials are not configured on the server.' });
+    }
+    try {
+        const response = await axios.get(`https://api.trello.com/1/members/me/boards?fields=name,id&key=${TRELLO_API_KEY}&token=${TRELLO_API_TOKEN}`);
+        res.status(200).json(response.data);
+    } catch (error) {
+        console.error('[ERROR] Failed to fetch Trello boards:', error.message);
+        res.status(500).json({ message: 'Failed to fetch Trello boards.' });
+    }
+});
+
+app.get('/api/trello/lists/:boardId', async (req, res) => {
+    const { boardId } = req.params;
+    const { TRELLO_API_KEY, TRELLO_API_TOKEN } = appSettings;
+    if (!TRELLO_API_KEY || !TRELLO_API_TOKEN) {
+        return res.status(400).json({ message: 'Trello credentials are not configured on the server.' });
+    }
+    try {
+        const response = await axios.get(`https://api.trello.com/1/boards/${boardId}/lists?fields=name,id&key=${TRELLO_API_KEY}&token=${TRELLO_API_TOKEN}`);
+        res.status(200).json(response.data);
+    } catch (error) {
+        console.error(`[ERROR] Failed to fetch lists for board ${boardId}:`, error.message);
+        res.status(500).json({ message: 'Failed to fetch Trello lists.' });
+    }
+});
+
+app.get('/api/trello/labels/:boardId', async (req, res) => {
+    const { boardId } = req.params;
+    const { TRELLO_API_KEY, TRELLO_API_TOKEN } = appSettings;
+    if (!TRELLO_API_KEY || !TRELLO_API_TOKEN) {
+        return res.status(400).json({ message: 'Trello credentials are not configured on the server.' });
+    }
+    try {
+        const response = await axios.get(`https://api.trello.com/1/boards/${boardId}/labels?fields=name,id&key=${TRELLO_API_KEY}&token=${TRELLO_API_TOKEN}`);
+        res.status(200).json(response.data);
+    } catch (error) {
+        console.error(`[ERROR] Failed to fetch labels for board ${boardId}:`, error.message);
+        res.status(500).json({ message: 'Failed to fetch Trello labels.' });
+    }
+});
 
 app.get('/api/settings', (req, res) => {
-    // Start with a copy of all current settings
     const responseSettings = { ...appSettings };
-
-    // Mask sensitive keys for frontend display.
-    // This tells the frontend that a value is present without exposing it.
-    responseSettings.TRELLO_API_KEY = appSettings.TRELLO_API_KEY ? '******' : '';
-    responseSettings.TRELLO_API_TOKEN = appSettings.TRELLO_API_TOKEN ? '******' : '';
-
-    // Add an `isConfigured` flag for the frontend banner logic, as discussed.
-    // This is the most secure way for the frontend to know the configuration status.
-    responseSettings.isConfigured = !!appSettings.TRELLO_API_KEY && !!appSettings.TRELLO_API_TOKEN &&
-                                   !!appSettings.TRELLO_BOARD_ID && !!appSettings.TRELLO_LIST_ID;
-
-    // Send the modified settings object to the frontend
+    responseSettings.areCredentialsSaved = !!appSettings.TRELLO_API_KEY && !!appSettings.TRELLO_API_TOKEN;
+    responseSettings.TRELLO_API_KEY = responseSettings.areCredentialsSaved ? '******' : '';
+    responseSettings.TRELLO_API_TOKEN = responseSettings.areCredentialsSaved ? '******' : '';
+    responseSettings.isConfigured = responseSettings.areCredentialsSaved &&
+                                     !!appSettings.TRELLO_BOARD_ID &&
+                                     !!appSettings.TRELLO_TO_DO_LIST_ID &&
+                                     !!appSettings.TRELLO_DONE_LIST_ID;
     res.json(responseSettings);
 });
 
+// This is the primary route for updating general settings.
+// It is now simplified to handle non-sensitive settings.
 app.put('/api/settings', async (req, res) => {
-    const newSettings = req.body;
+    // This route now specifically handles board, list, and cron settings.
+    const { TRELLO_BOARD_ID, TRELLO_TO_DO_LIST_ID, TRELLO_DONE_LIST_ID, TRELLO_LABEL_ID, CRON_SCHEDULE } = req.body;
+    const newSettings = { TRELLO_BOARD_ID, TRELLO_TO_DO_LIST_ID, TRELLO_DONE_LIST_ID, TRELLO_LABEL_ID, CRON_SCHEDULE };
+
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
         for (const key in newSettings) {
-            // Only update keys that exist in our app settings
-            if (appSettings.hasOwnProperty(key)) {
-                // For sensitive keys, only update if a new value is provided.
-                if ((key === 'TRELLO_API_KEY' || key === 'TRELLO_API_TOKEN') && newSettings[key] === '') {
-                    continue; // Skip update if the password field is empty
-                }
+            if (newSettings[key] !== undefined && appSettings.hasOwnProperty(key)) {
                 await client.query('UPDATE settings SET value = $1 WHERE key = $2', [newSettings[key], key]);
             }
         }
         await client.query('COMMIT');
         
-        await loadSettings(); // Reload settings into the application
-        reinitializeCronJob(); // Restart the cron job with the new schedule
+        await loadSettings();
+        reinitializeCronJob();
 
-        // await logAuditEvent('INFO', 'Application settings updated.');
         res.status(200).json({ message: 'Settings updated successfully.' });
     } catch (error) {
         await client.query('ROLLBACK');
         await logAuditEvent('ERROR', 'Failed to update settings.', { error: String(error) });
         res.status(500).json({ error: 'Failed to update settings.' });
+    } finally {
+        client.release();
+    }
+});
+
+// This is a new, dedicated route for saving sensitive credentials.
+app.put('/api/settings/credentials', async (req, res) => {
+    const { TRELLO_API_KEY, TRELLO_API_TOKEN } = req.body;
+    if (!TRELLO_API_KEY || !TRELLO_API_TOKEN) {
+        return res.status(400).json({ message: "API Key and Token are required." });
+    }
+
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        await client.query('UPDATE settings SET value = $1 WHERE key = $2', [TRELLO_API_KEY, 'TRELLO_API_KEY']);
+        await client.query('UPDATE settings SET value = $1 WHERE key = $2', [TRELLO_API_TOKEN, 'TRELLO_API_TOKEN']);
+        await client.query('COMMIT');
+
+        await loadSettings(); // Reload settings after update
+
+        res.status(200).json({ message: 'Credentials saved successfully.' });
+    } catch (error) {
+        await client.query('ROLLBACK');
+        await logAuditEvent('ERROR', 'Failed to save credentials.', { error: String(error) });
+        res.status(500).json({ error: 'Failed to save credentials.' });
     } finally {
         client.release();
     }

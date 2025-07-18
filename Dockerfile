@@ -19,7 +19,6 @@ ENV REACT_APP_API_URL=/
 # Build the static files for production
 RUN npm run build
 
-
 # --- Stage 2: Create the Final Node.js Server Image ---
 # Use the same Node.js version for the final production image
 FROM node:18-alpine

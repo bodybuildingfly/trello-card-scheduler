@@ -231,65 +231,100 @@ const AuditLogViewer = () => {
     );
 };
 
+// ====================================================================
+// START: UPDATED SETTINGS PAGE COMPONENT
+// ====================================================================
 const SettingsPage = ({ onSettingsSaved }) => {
-    const [settings, setSettings] = useState({});
-    const [loading, setLoading] = useState(true);
+    // Overall state
+    const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+
+    // Step 1: Credentials State
+    const [apiKey, setApiKey] = useState('');
+    const [apiToken, setApiToken] = useState('');
     const [isTesting, setIsTesting] = useState(false);
     const [testResult, setTestResult] = useState({ status: '', message: '' });
+    const [areCredentialsSaved, setAreCredentialsSaved] = useState(false);
 
-    const cronToTime = (cronString) => {
-        const parts = (cronString || '0 1 * * *').split(' ');
-        if (parts.length < 2) return { hour: '01', ampm: 'am' };
-        const hour24 = parseInt(parts[1], 10);
-        const ampm = hour24 >= 12 ? 'pm' : 'am';
-        let hour12 = hour24 % 12;
-        if (hour12 === 0) hour12 = 12;
-        return { hour: String(hour12).padStart(2, '0'), ampm };
-    };
+    // Step 2: Board/List/Label State
+    const [boards, setBoards] = useState([]);
+    const [lists, setLists] = useState([]);
+    const [labels, setLabels] = useState([]);
+    const [doneLists, setDoneLists] = useState([]);
+    const [isLoadingBoards, setIsLoadingBoards] = useState(false);
+    const [isLoadingLists, setIsLoadingLists] = useState(false);
+    const [isLoadingLabels, setIsLoadingLabels] = useState(false);
+    
+    // Step 3: Combined Form State
+    const [formData, setFormData] = useState({
+        TRELLO_BOARD_ID: '',
+        TRELLO_TO_DO_LIST_ID: '',
+        TRELLO_DONE_LIST_ID: '',
+        TRELLO_LABEL_ID: '',
+        CRON_SCHEDULE: '0 1 * * *',
+    });
 
-    const timeToCron = (hour12, ampm) => {
-        let hour24 = parseInt(hour12, 10);
-        if (ampm === 'pm' && hour24 !== 12) hour24 += 12;
-        if (ampm === 'am' && hour24 === 12) hour24 = 0;
-        return `0 ${hour24} * * *`;
-    };
-
-    const [scheduleTime, setScheduleTime] = useState(cronToTime(settings.CRON_SCHEDULE));
-
+    // Fetch initial settings to determine UI state
     useEffect(() => {
-        const fetchSettings = async () => {
-            setLoading(true);
+        const fetchInitialSettings = async () => {
+            setIsLoading(true);
             try {
                 const res = await axios.get(`${API_BASE_URL}/api/settings`);
-                setSettings(res.data);
-                setScheduleTime(cronToTime(res.data.CRON_SCHEDULE));
+                setAreCredentialsSaved(res.data.areCredentialsSaved);
+                setFormData({
+                    TRELLO_BOARD_ID: res.data.TRELLO_BOARD_ID || '',
+                    TRELLO_TO_DO_LIST_ID: res.data.TRELLO_TO_DO_LIST_ID || '',
+                    TRELLO_DONE_LIST_ID: res.data.TRELLO_DONE_LIST_ID || '',
+                    TRELLO_LABEL_ID: res.data.TRELLO_LABEL_ID || '',
+                    CRON_SCHEDULE: res.data.CRON_SCHEDULE || '0 1 * * *',
+                });
             } catch (err) {
                 setError('Failed to load settings.');
             }
-            setLoading(false);
+            setIsLoading(false);
         };
-        fetchSettings();
+        fetchInitialSettings();
     }, []);
 
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setSettings(prev => ({ ...prev, [name]: value }));
-    };
+    // Fetch boards if credentials are saved
+    useEffect(() => {
+        if (areCredentialsSaved) {
+            setIsLoadingBoards(true);
+            axios.get(`${API_BASE_URL}/api/trello/boards`)
+                .then(res => setBoards(res.data))
+                .catch(() => setError('Could not fetch Trello boards. Please check credentials.'))
+                .finally(() => setIsLoadingBoards(false));
+        }
+    }, [areCredentialsSaved]);
 
-    const handleTimeChange = (e) => {
-        const { name, value } = e.target;
-        const newTime = { ...scheduleTime, [name]: value };
-        setScheduleTime(newTime);
-        setSettings(prev => ({ ...prev, CRON_SCHEDULE: timeToCron(newTime.hour, newTime.ampm) }));
-    };
+    // Fetch lists and labels when a board is selected
+    useEffect(() => {
+        if (formData.TRELLO_BOARD_ID) {
+            setIsLoadingLists(true);
+            axios.get(`${API_BASE_URL}/api/trello/lists/${formData.TRELLO_BOARD_ID}`)
+                .then(res => {
+                    setLists(res.data);
+                    setDoneLists(res.data); // Both dropdowns use the same list source
+                })
+                .catch(() => setError('Could not fetch lists for the selected board.'))
+                .finally(() => setIsLoadingLists(false));
 
-    const handleTestConnection = async () => {
+            setIsLoadingLabels(true);
+            axios.get(`${API_BASE_URL}/api/trello/labels/${formData.TRELLO_BOARD_ID}`)
+                .then(res => {
+                    setLabels(res.data);
+                })
+                .catch(() => setError('Could not fetch labels for the selected board.'))
+                .finally(() => setIsLoadingLabels(false));
+        }
+    }, [formData.TRELLO_BOARD_ID]);
+
+    const handleCredentialTest = async () => {
         setIsTesting(true);
         setTestResult({ status: '', message: '' });
         try {
-            const res = await axios.post(`${API_BASE_URL}/api/trello/test`, settings);
+            const res = await axios.post(`${API_BASE_URL}/api/trello/credentials/test`, { apiKey, apiToken });
             setTestResult({ status: 'success', message: res.data.message });
         } catch (err) {
             setTestResult({ status: 'error', message: err.response?.data?.message || 'An unknown error occurred.' });
@@ -297,12 +332,30 @@ const SettingsPage = ({ onSettingsSaved }) => {
         setIsTesting(false);
     };
 
+    const handleCredentialSave = async () => {
+        try {
+            await axios.put(`${API_BASE_URL}/api/settings/credentials`, { TRELLO_API_KEY: apiKey, TRELLO_API_TOKEN: apiToken });
+            setSuccess('Credentials saved successfully!');
+            setAreCredentialsSaved(true);
+            setApiKey('');
+            setApiToken('');
+            setTestResult({ status: '', message: '' }); // Clear test result
+        } catch (err) {
+            setError(err.response?.data?.message || 'Failed to save credentials.');
+        }
+    };
+
+    const handleFormChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
         setSuccess('');
         try {
-            await axios.put(`${API_BASE_URL}/api/settings`, settings);
+            await axios.put(`${API_BASE_URL}/api/settings`, formData);
             setSuccess('Settings saved successfully! The scheduler has been updated.');
             if (onSettingsSaved) onSettingsSaved();
         } catch (err) {
@@ -310,78 +363,93 @@ const SettingsPage = ({ onSettingsSaved }) => {
         }
     };
 
-    if (loading) return <Spinner />;
+    if (isLoading) return <Spinner />;
 
     return (
         <div className="bg-white p-6 rounded-2xl shadow-lg max-w-3xl mx-auto">
             <h2 className="text-3xl font-semibold text-slate-800 mb-6">Application Settings</h2>
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-8">
+                {/* --- Step 1: Credentials --- */}
                 <div className="p-4 border rounded-lg">
-                    <div className="flex justify-between items-center mb-4">
-                        <h3 className="font-semibold text-lg">Trello Configuration</h3>
-                        <button type="button" onClick={handleTestConnection} disabled={isTesting} className="px-4 py-2 text-sm rounded-lg bg-slate-100 text-slate-700 font-semibold hover:bg-slate-200 disabled:bg-slate-50">
-                            {isTesting ? 'Testing...' : 'Test Connection'}
-                        </button>
-                    </div>
-                    {testResult.message && (
-                        <div className={`p-3 mb-4 rounded-lg text-center text-sm ${testResult.status === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                            {testResult.message}
-                        </div>
-                    )}
+                    <h3 className="font-semibold text-lg mb-1">Step 1: Trello Credentials</h3>
+                    <p className="text-sm text-slate-500 mb-4">Securely connect to your Trello account.</p>
                     <div className="space-y-4">
                         <div>
-                            <label htmlFor="TRELLO_API_KEY" className="form-label">Trello API Key</label>
-                            <input type="password" name="TRELLO_API_KEY" id="TRELLO_API_KEY" value={settings.TRELLO_API_KEY || ''} onChange={handleChange} className="form-input" placeholder="Enter your Trello API Key" />
+                            <label className="form-label">Trello API Key</label>
+                            <input type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} className="form-input" placeholder={areCredentialsSaved ? 'Saved (update if needed)' : 'Enter your Trello API Key'} />
                         </div>
                         <div>
-                            <label htmlFor="TRELLO_API_TOKEN" className="form-label">Trello API Token</label>
-                            <input type="password" name="TRELLO_API_TOKEN" id="TRELLO_API_TOKEN" value={settings.TRELLO_API_TOKEN || ''} onChange={handleChange} className="form-input" placeholder="Enter your Trello API Token" />
+                            <label className="form-label">Trello API Token</label>
+                            <input type="password" value={apiToken} onChange={(e) => setApiToken(e.target.value)} className="form-input" placeholder={areCredentialsSaved ? 'Saved (update if needed)' : 'Enter your Trello API Token'} />
+                        </div>
+                        {testResult.message && (
+                            <div className={`p-3 rounded-lg text-center text-sm ${testResult.status === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                {testResult.message}
+                            </div>
+                        )}
+                        <div className="flex justify-end space-x-2">
+                             <button type="button" onClick={handleCredentialTest} disabled={isTesting || !apiKey || !apiToken} className="form-button-secondary">
+                                {isTesting ? 'Testing...' : 'Test Connection'}
+                            </button>
+                            <button type="button" onClick={handleCredentialSave} disabled={!apiKey || !apiToken} className="form-button-primary">Save Credentials</button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* --- Step 2: Board, List, and Label Selection --- */}
+                <div className={`p-4 border rounded-lg ${!areCredentialsSaved && 'opacity-50'}`}>
+                    <h3 className="font-semibold text-lg mb-1">Step 2: Target Board and Lists</h3>
+                    <p className="text-sm text-slate-500 mb-4">Choose where to create and track cards.</p>
+                    {!areCredentialsSaved && <p className="text-center text-sm text-slate-500 p-4">Please save your credentials first.</p>}
+                    <div className={`space-y-4 ${!areCredentialsSaved && 'pointer-events-none'}`}>
+                         <div>
+                            <label htmlFor="TRELLO_BOARD_ID" className="form-label">Trello Board</label>
+                            <select name="TRELLO_BOARD_ID" id="TRELLO_BOARD_ID" value={formData.TRELLO_BOARD_ID} onChange={handleFormChange} className="form-input" disabled={isLoadingBoards}>
+                                <option value="">{isLoadingBoards ? 'Loading...' : 'Select a Board'}</option>
+                                {boards.map(board => <option key={board.id} value={board.id}>{board.name}</option>)}
+                            </select>
                         </div>
                         <div>
-                            <label htmlFor="TRELLO_BOARD_ID" className="form-label">Trello Board ID</label>
-                            <input type="text" name="TRELLO_BOARD_ID" id="TRELLO_BOARD_ID" value={settings.TRELLO_BOARD_ID || ''} onChange={handleChange} className="form-input" />
-                        </div>
-                        <div>
-                            <label htmlFor="TRELLO_LIST_ID" className="form-label">ID for "To Do" List</label>
-                            <input type="text" name="TRELLO_LIST_ID" id="TRELLO_LIST_ID" value={settings.TRELLO_LIST_ID || ''} onChange={handleChange} className="form-input" />
+                            <label htmlFor="TRELLO_TO_DO_LIST_ID" className="form-label">ID for "To Do" List</label>
+                             <select name="TRELLO_TO_DO_LIST_ID" id="TRELLO_TO_DO_LIST_ID" value={formData.TRELLO_TO_DO_LIST_ID} onChange={handleFormChange} className="form-input" disabled={isLoadingLists || !formData.TRELLO_BOARD_ID}>
+                                <option value="">{isLoadingLists ? 'Loading...' : 'Select a List'}</option>
+                                {lists.map(list => <option key={list.id} value={list.id}>{list.name}</option>)}
+                            </select>
                         </div>
                         <div>
                             <label htmlFor="TRELLO_DONE_LIST_ID" className="form-label">ID for "Done" List</label>
-                            <input type="text" name="TRELLO_DONE_LIST_ID" id="TRELLO_DONE_LIST_ID" value={settings.TRELLO_DONE_LIST_ID || ''} onChange={handleChange} className="form-input" />
+                             <select name="TRELLO_DONE_LIST_ID" id="TRELLO_DONE_LIST_ID" value={formData.TRELLO_DONE_LIST_ID} onChange={handleFormChange} className="form-input" disabled={isLoadingLists || !formData.TRELLO_BOARD_ID}>
+                                <option value="">{isLoadingLists ? 'Loading...' : 'Select a List'}</option>
+                                {doneLists.map(list => <option key={list.id} value={list.id}>{list.name}</option>)}
+                            </select>
                         </div>
-                    </div>
-                </div>
-
-                <div className="p-4 border rounded-lg">
-                    <h3 className="font-semibold text-lg mb-4">Scheduler Configuration</h3>
-                    <div className="space-y-4">
                         <div>
-                            <label className="form-label">Daily Run Time</label>
-                            <div className="flex items-center gap-2">
-                                <select name="hour" value={scheduleTime.hour} onChange={handleTimeChange} className="form-input">
-                                    {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map(h => <option key={h} value={h}>{h}</option>)}
-                                </select>
-                                <select name="ampm" value={scheduleTime.ampm} onChange={handleTimeChange} className="form-input">
-                                    <option value="am">AM</option>
-                                    <option value="pm">PM</option>
-                                </select>
-                            </div>
+                            <label htmlFor="TRELLO_LABEL_ID" className="form-label">ID for Label</label>
+                             <select name="TRELLO_LABEL_ID" id="TRELLO_LABEL_ID" value={formData.TRELLO_LABEL_ID} onChange={handleFormChange} className="form-input" disabled={isLoadingLabels || !formData.TRELLO_BOARD_ID}>
+                                <option value="">{isLoadingLabels ? 'Loading...' : 'Select a Label'}</option>
+                                {labels.map(label => <option key={label.id} value={label.id}>{label.name}</option>)}
+                            </select>
                         </div>
                     </div>
                 </div>
 
+                {/* --- Final Save --- */}
                 {error && <p className="text-red-600 bg-red-100 p-3 rounded-lg text-center">{error}</p>}
                 {success && <p className="text-green-600 bg-green-100 p-3 rounded-lg text-center">{success}</p>}
 
                 <div className="flex justify-end pt-4">
-                    <button type="submit" className="px-6 py-2.5 rounded-lg bg-sky-600 text-white font-semibold hover:bg-sky-700 shadow-md">
-                        Save Settings
+                    <button type="submit" disabled={!areCredentialsSaved} className="form-button-primary w-full sm:w-auto">
+                        Save All Settings
                     </button>
                 </div>
             </form>
         </div>
     );
 };
+// ====================================================================
+// END: UPDATED SETTINGS PAGE COMPONENT
+// ====================================================================
+
 
 // --- Main App Component ---
 function App() {
@@ -412,10 +480,10 @@ function App() {
   const checkTrelloConfig = async () => {
     try {
         const res = await axios.get(`${API_BASE_URL}/api/settings`);
-        const { isConfigured, TRELLO_BOARD_ID, TRELLO_LIST_ID } = res.data;
+        const { isConfigured, TRELLO_BOARD_ID, TRELLO_TO_DO_LIST_ID } = res.data;
 
         // Use the 'isConfigured' flag from the backend, and check for board/list IDs
-        if (isConfigured && TRELLO_BOARD_ID && TRELLO_LIST_ID) {
+        if (isConfigured && TRELLO_BOARD_ID && TRELLO_TO_DO_LIST_ID) {
             setIsTrelloConfigured(true);
             return true;
         } else {
@@ -843,7 +911,12 @@ function App() {
         {activeTab === 'audit' && <AuditLogViewer />}
         {activeTab === 'settings' && <SettingsPage onSettingsSaved={() => { setStatusKey(prev => prev + 1); loadInitialData(); }} />}
 
-        <style jsx global>{` .form-label { @apply block text-sm font-medium text-slate-600 mb-1; } `}</style>
+        <style jsx global>{`
+            .form-label { @apply block text-sm font-medium text-slate-600 mb-1; }
+            .form-input { @apply block w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm shadow-sm placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500; }
+            .form-button-primary { @apply px-4 py-2 text-sm rounded-lg bg-sky-600 text-white font-semibold hover:bg-sky-700 shadow-sm disabled:bg-sky-300 disabled:cursor-not-allowed; }
+            .form-button-secondary { @apply px-4 py-2 text-sm rounded-lg bg-slate-100 text-slate-700 font-semibold hover:bg-slate-200 disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed; }
+        `}</style>
       </main>
     </div>
   );
