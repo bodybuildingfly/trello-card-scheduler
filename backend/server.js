@@ -3,6 +3,7 @@ import cors from 'cors';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import bcrypt from 'bcryptjs'; // Import bcrypt for password hashing
 
 // --- Imports for Modular Structure ---
 import pool from './db.js';
@@ -10,19 +11,21 @@ import recordsRoutes from './routes/recordsRoutes.js';
 import settingsRoutes from './routes/settingsRoutes.js';
 import trelloRoutes from './routes/trelloRoutes.js';
 import appStatusRoutes from './routes/appStatusRoutes.js';
+import authRoutes from './routes/authRoutes.js';
+import usersRoutes from './routes/usersRoutes.js';
 import { reinitializeCronJob, getSchedulerInstance } from './services/schedulerService.js';
 
 // --- Express App Setup ---
 const app = express();
 const port = 5000;
 
-// Helper to get __dirname in ES Modules, which is not available by default.
+// Helper to get __dirname in ES Modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // --- Middleware ---
 const devOrigin = 'http://localhost:3000';
-const prodOrigin = undefined; // In production, requests are same-origin.
+const prodOrigin = undefined;
 const corsOptions = {
     origin: process.env.NODE_ENV === 'production' ? prodOrigin : devOrigin,
     optionsSuccessStatus: 200
@@ -31,7 +34,6 @@ app.use(cors(corsOptions));
 app.use(express.json());
 
 // --- Global Application State ---
-// This object holds the settings loaded from the database.
 let appSettings = {};
 
 /**
@@ -51,9 +53,9 @@ const logAuditEvent = async (level, message, details = {}) => {
 
 /**
  * @description Loads all settings from the database into the global appSettings object.
- * It also seeds default settings if they don't exist.
  */
 const loadSettings = async () => {
+    // ... (rest of the function is unchanged)
     console.log('[INFO] Loading settings from database...');
     const client = await pool.connect();
     try {
@@ -91,9 +93,10 @@ const loadSettings = async () => {
 };
 
 /**
- * @description Initializes the database schema and seeds initial data if the records table is empty.
+ * @description Initializes the database schema and seeds initial data if necessary.
  */
 const initializeDatabaseSchema = async () => {
+    // ... (rest of the function is unchanged)
     const client = await pool.connect();
     try {
         console.log('[INFO] Checking database schema...');
@@ -118,30 +121,68 @@ const initializeDatabaseSchema = async () => {
     }
 };
 
-// --- API Routes Setup ---
-
 /**
- * @description Middleware to attach server-level config and functions to each request object.
- * This allows controllers to access them without circular dependencies.
+ * @description Checks for an admin user on startup and creates one if it doesn't exist.
+ * Uses environment variables ADMIN_USERNAME and ADMIN_PASSWORD, falling back to defaults.
  */
+const createInitialAdmin = async () => {
+    const client = await pool.connect();
+    try {
+        const { rows } = await client.query("SELECT id FROM users WHERE role = 'admin' LIMIT 1");
+        if (rows.length > 0) {
+            console.log('[INFO] Admin user already exists.');
+            return;
+        }
+
+        console.log('[INFO] No admin user found. Creating initial admin account...');
+
+        const adminUser = process.env.ADMIN_USERNAME || 'admin';
+        const adminPass = process.env.ADMIN_PASSWORD || 'changeme'; // A default password
+
+        if (!process.env.ADMIN_PASSWORD) {
+            console.warn('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
+            console.warn('!!! WARNING: Using default admin password.                 !!!');
+            console.warn('!!! Please set the ADMIN_PASSWORD environment variable.    !!!');
+            console.warn(`!!! Default credentials: ${adminUser} / ${adminPass}                !!!`);
+            console.warn('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
+        }
+
+        const salt = await bcrypt.genSalt(10);
+        const passwordHash = await bcrypt.hash(adminPass, salt);
+
+        await client.query(
+            'INSERT INTO users (username, password_hash, role) VALUES ($1, $2, $3)',
+            [adminUser, passwordHash, 'admin']
+        );
+
+        console.log(`[INFO] Admin user '${adminUser}' created successfully.`);
+
+    } catch (err) {
+        console.error('[CRITICAL] Failed to create initial admin user.', err);
+        process.exit(1);
+    } finally {
+        client.release();
+    }
+};
+
+
+// --- API Routes Setup ---
 const attachAppConfig = (req, res, next) => {
     req.appSettings = appSettings;
     req.loadSettings = loadSettings;
-    // We pass the reinitialize function from the service, not the one from this file.
     req.reinitializeCronJob = () => reinitializeCronJob(appSettings, logAuditEvent);
     req.logAuditEvent = logAuditEvent;
     req.cronJob = getSchedulerInstance();
     next();
 };
 
-// Apply the middleware to all API routes
 app.use('/api', attachAppConfig);
-
-// Register all the modular routers
 app.use('/api/records', recordsRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/trello', trelloRoutes);
 app.use('/api', appStatusRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/users', usersRoutes);
 
 // --- Serve Frontend Static Files (Production Only) ---
 if (process.env.NODE_ENV === 'production') {
@@ -154,13 +195,12 @@ if (process.env.NODE_ENV === 'production') {
 
 /**
  * @description The main application start function.
- * It initializes the database, loads settings, starts the scheduler, and listens for requests.
  */
 const startServer = async () => {
     try {
         await initializeDatabaseSchema();
+        await createInitialAdmin();
         await loadSettings();
-        // Start the scheduler using the imported function from our service
         reinitializeCronJob(appSettings, logAuditEvent);
         app.listen(port, () => console.log(`Server is running on http://localhost:${port}`));
     } catch (err) {
