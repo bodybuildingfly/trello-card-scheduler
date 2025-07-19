@@ -3,11 +3,11 @@ import cors from 'cors';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import bcrypt from 'bcryptjs'; // Import bcrypt for password hashing
+import bcrypt from 'bcryptjs';
 
 // --- Imports for Modular Structure ---
 import pool from './db.js';
-import recordsRoutes from './routes/recordsRoutes.js';
+import schedulesRoutes from './routes/schedulesRoutes.js';
 import settingsRoutes from './routes/settingsRoutes.js';
 import trelloRoutes from './routes/trelloRoutes.js';
 import appStatusRoutes from './routes/appStatusRoutes.js';
@@ -38,7 +38,6 @@ let appSettings = {};
 
 /**
  * @description Writes an audit event to the console and the database.
- * It can now optionally include the user who performed the action.
  * @param {'INFO' | 'ERROR' | 'CRITICAL'} level - The severity level of the event.
  * @param {string} message - A description of the event.
  * @param {object} [details={}] - A JSON object containing relevant details.
@@ -63,7 +62,6 @@ const logAuditEvent = async (level, message, details = {}, user = null) => {
  * @description Loads all settings from the database into the global appSettings object.
  */
 const loadSettings = async () => {
-    // ... (rest of the function is unchanged)
     console.log('[INFO] Loading settings from database...');
     const client = await pool.connect();
     try {
@@ -101,26 +99,16 @@ const loadSettings = async () => {
 };
 
 /**
- * @description Initializes the database schema and seeds initial data if necessary.
+ * @description Initializes the database schema by running the schema.sql file.
+ * Seeding logic has been removed.
  */
 const initializeDatabaseSchema = async () => {
-    // ... (rest of the function is unchanged)
     const client = await pool.connect();
     try {
         console.log('[INFO] Checking database schema...');
         const schemaSql = fs.readFileSync(path.join(__dirname, 'schema.sql')).toString();
         await client.query(schemaSql);
         console.log('[INFO] Database schema check complete.');
-
-        const { rows } = await client.query('SELECT COUNT(*) FROM records');
-        if (parseInt(rows[0].count, 10) === 0) {
-            console.log('[INFO] Records table is empty. Seeding initial data...');
-            const seedSql = fs.readFileSync(path.join(__dirname, 'seed.sql')).toString();
-            await client.query(seedSql);
-            console.log('[INFO] Successfully seeded database with initial demo data.');
-        } else {
-            console.log('[INFO] Database already contains data. Skipping seed.');
-        }
     } catch (err) {
         console.error('[CRITICAL] Failed to initialize database.', err);
         process.exit(1);
@@ -131,7 +119,6 @@ const initializeDatabaseSchema = async () => {
 
 /**
  * @description Checks for an admin user on startup and creates one if it doesn't exist.
- * Uses environment variables ADMIN_USERNAME and ADMIN_PASSWORD, falling back to defaults.
  */
 const createInitialAdmin = async () => {
     const client = await pool.connect();
@@ -145,7 +132,7 @@ const createInitialAdmin = async () => {
         console.log('[INFO] No admin user found. Creating initial admin account...');
 
         const adminUser = process.env.ADMIN_USERNAME || 'admin';
-        const adminPass = process.env.ADMIN_PASSWORD || 'changeme'; // A default password
+        const adminPass = process.env.ADMIN_PASSWORD || 'changeme';
 
         if (!process.env.ADMIN_PASSWORD) {
             console.warn('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
@@ -173,34 +160,25 @@ const createInitialAdmin = async () => {
     }
 };
 
-/**
- * @description Middleware to attach server-level config and functions to each request object.
- */
+// --- API Routes Setup ---
 const attachAppConfig = (req, res, next) => {
     req.appSettings = appSettings;
     req.loadSettings = loadSettings;
     req.reinitializeCronJob = () => reinitializeCronJob(appSettings, logAuditEvent);
-    // This creates a user-specific version of the logger for each request
     req.logAuditEvent = (level, message, details) => logAuditEvent(level, message, details, req.user);
     req.cronJob = getSchedulerInstance();
     next();
 };
 
-// --- API Routes Setup ---
 app.use('/api', attachAppConfig);
-app.use('/api/records', recordsRoutes);
+
+app.use('/api/schedules', schedulesRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/trello', trelloRoutes);
 app.use('/api', appStatusRoutes);
-
-// --- TEMPORARY TEST ROUTE ---
-app.get('/api/test-reload', (req, res) => {
-    res.send('Hot reload test successful! Version 2.'); 
-});
-
-
 app.use('/api/auth', authRoutes);
 app.use('/api/users', usersRoutes);
+
 
 // --- Serve Frontend Static Files (Production Only) ---
 if (process.env.NODE_ENV === 'production') {

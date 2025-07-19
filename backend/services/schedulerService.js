@@ -2,15 +2,14 @@ import { CronJob } from 'cron';
 import pool from '../db.js';
 import * as trelloService from './trelloService.js';
 
-// The cronJob instance is now managed entirely within this service.
 let cronJob;
 
 /**
- * @description Calculates the next due date for a given schedule based on its frequency.
- * @param {object} schedule - The schedule record from the database.
+ * @description Calculates the next due date for a given schedule.
+ * @param {object} schedule - The schedule object from the database.
  * @returns {Date} The next due date.
  */
-export const calculateNextDueDate = (schedule) => { // <-- UPDATED: Added export
+export const calculateNextDueDate = (schedule) => {
     const { frequency, frequency_interval, frequency_details, last_card_created_at, start_date, trigger_hour, trigger_minute, trigger_ampm } = schedule;
     const baseDate = last_card_created_at ? new Date(Math.max(new Date(last_card_created_at), new Date(start_date || 0))) : new Date(start_date || Date.now());
     let nextDate = new Date(baseDate);
@@ -57,7 +56,7 @@ const runScheduler = async (appSettings, logAuditEvent) => {
     const startTime = Date.now();
     
     try {
-        const { rows: schedules } = await pool.query('SELECT * FROM records WHERE frequency != \'once\'');
+        const { rows: schedules } = await pool.query('SELECT * FROM schedules WHERE frequency != \'once\'');
         for (const schedule of schedules) {
             let shouldCreateNewCard = schedule.needs_new_card;
             if (schedule.active_card_id && !shouldCreateNewCard) {
@@ -66,7 +65,7 @@ const runScheduler = async (appSettings, logAuditEvent) => {
                     if (!activeCard || activeCard.closed || activeCard.idList === appSettings.TRELLO_DONE_LIST_ID) {
                         await logAuditEvent('INFO', `Active card for schedule ${schedule.id} is completed.`, { cardId: schedule.active_card_id, runId });
                         shouldCreateNewCard = true;
-                        await pool.query('UPDATE records SET needs_new_card = TRUE, active_card_id = NULL WHERE id = $1', [schedule.id]);
+                        await pool.query('UPDATE schedules SET needs_new_card = TRUE, active_card_id = NULL WHERE id = $1', [schedule.id]);
                     }
                 } catch (error) {
                     await logAuditEvent('ERROR', `Failed to check status of active card for schedule ${schedule.id}.`, { cardId: schedule.active_card_id, error: String(error), runId });
@@ -83,7 +82,7 @@ const runScheduler = async (appSettings, logAuditEvent) => {
                 try {
                     const newCard = await trelloService.createTrelloCard(schedule, nextDueDate, appSettings, logAuditEvent, runId);
                     if (newCard) {
-                        await pool.query('UPDATE records SET active_card_id = $1, last_card_created_at = NOW(), needs_new_card = FALSE WHERE id = $2', [newCard.id, schedule.id]);
+                        await pool.query('UPDATE schedules SET active_card_id = $1, last_card_created_at = NOW(), needs_new_card = FALSE WHERE id = $2', [newCard.id, schedule.id]);
                     }
                 } catch (error) {
                     console.error(`Error during card creation for schedule ${schedule.id}:`, error);
@@ -134,7 +133,7 @@ export const reinitializeCronJob = (appSettings, logAuditEvent) => {
 };
 
 /**
- * @description A getter function to allow other modules (like the status controller) to access the cronJob instance.
+ * @description A getter function to allow other modules to access the cronJob instance.
  * @returns {CronJob} The active cron job instance.
  */
 export const getSchedulerInstance = () => cronJob;

@@ -20,13 +20,13 @@ CREATE TABLE IF NOT EXISTS users (
 
 
 -- =============================================================================
--- Table: records
+-- Table: schedules
 -- Description: Stores the configuration for each recurring Trello card schedule.
 -- =============================================================================
-CREATE TABLE IF NOT EXISTS records (
+CREATE TABLE IF NOT EXISTS schedules (
     id SERIAL PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
-    category VARCHAR(255) NOT NULL DEFAULT 'Uncategorized', -- <-- ADD THIS LINE
+    category VARCHAR(255) NOT NULL DEFAULT 'Uncategorized',
     owner_name VARCHAR(255),
     description TEXT,
     frequency VARCHAR(50) NOT NULL DEFAULT 'once',

@@ -15,15 +15,14 @@ import UserManagementPage from './components/UserManagementPage';
 import apiClient from './api';
 import { useAuth } from './context/AuthContext';
 
-// --- Helper Icon Imports (UPDATED) ---
-// Removed fixed width/height and added Tailwind classes for consistent sizing.
-const PlusIcon = () => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
-const SettingsIcon = () => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>;
-const AuditLogIcon = () => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>;
-const UsersIcon = () => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>;
+// --- Helper Icon Imports ---
+const PlusIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
+const SettingsIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>;
+const AuditLogIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>;
+const UsersIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>;
 
 /**
- * @description A placeholder component to display in the main content area when no specific view is active.
+ * @description A placeholder component to display in the main content area.
  */
 const WelcomeScreen = () => (
     <div className="flex flex-col items-center justify-center h-full text-center text-slate-500">
@@ -37,7 +36,7 @@ const WelcomeScreen = () => (
  */
 function App() {
     // --- State Management ---
-    const [records, setRecords] = useState({});
+    const [schedules, setSchedules] = useState({});
     const [trelloMembers, setTrelloMembers] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -45,13 +44,13 @@ function App() {
 
     // Form-related state
     const [isEditing, setIsEditing] = useState(false);
-    const [selectedRecordId, setSelectedRecordId] = useState(null);
+    const [selectedScheduleId, setSelectedScheduleId] = useState(null);
     const initialFormState = { title: '', owner_name: '', description: '', category: '', frequency: 'once', frequency_interval: 1, frequency_details: '1', start_date: '', end_date: '', trigger_hour: '09', trigger_minute: '00', trigger_ampm: 'am' };
     const [formData, setFormData] = useState(initialFormState);
 
     // Modal-related state
     const [showDeleteModal, setShowDeleteModal] = useState(false);
-    const [recordToDelete, setRecordToDelete] = useState(null);
+    const [scheduleToDelete, setScheduleToDelete] = useState(null);
 
     // Other state
     const [isTrelloConfigured, setIsTrelloConfigured] = useState(true);
@@ -61,13 +60,14 @@ function App() {
     const { isAuthenticated, user, logout, isAdmin } = useAuth();
 
     // --- Data Fetching and Lifecycle ---
-    const fetchRecords = useCallback(async () => {
+
+    const fetchSchedules = useCallback(async () => {
         try {
-            const recordsRes = await apiClient.get('/api/records');
-            setRecords(recordsRes.data);
+            const res = await apiClient.get('/api/schedules');
+            setSchedules(res.data);
         } catch (err) {
-            console.error("Records Fetch Error:", err);
-            setError("Failed to load scheduled cards.");
+            console.error("Schedules Fetch Error:", err);
+            setError("Failed to load schedules.");
         }
     }, [setError]);
 
@@ -97,13 +97,13 @@ function App() {
                     setError('Failed to load Trello members. Check server logs and Trello config.');
                 }
             }
-            await fetchRecords();
+            await fetchSchedules();
         } catch (err) {
             setError('Failed to load initial application data.');
         } finally {
             setIsLoading(false);
         }
-    }, [checkTrelloConfig, fetchRecords, setError, setIsLoading, setTrelloMembers]);
+    }, [checkTrelloConfig, fetchSchedules, setError, setIsLoading, setTrelloMembers]);
     
     useEffect(() => {
         if (isAuthenticated) {
@@ -115,14 +115,14 @@ function App() {
     const handleFormSubmit = async (submittedFormData) => {
         setIsLoading(true);
         const method = isEditing ? 'put' : 'post';
-        const url = isEditing ? `/api/records/${selectedRecordId}` : '/api/records';
+        const url = isEditing ? `/api/schedules/${selectedScheduleId}` : '/api/schedules';
         
         try {
           await apiClient[method](url, submittedFormData);
-          await fetchRecords();
+          await fetchSchedules();
           resetForm(true);
         } catch (err) {
-          setError(`Failed to ${isEditing ? 'update' : 'add'} scheduled card.`);
+          setError(`Failed to ${isEditing ? 'update' : 'add'} schedule.`);
         } finally {
             setIsLoading(false);
         }
@@ -131,43 +131,43 @@ function App() {
     const resetForm = (hideForm = false) => {
         setFormData(initialFormState);
         setIsEditing(false);
-        setSelectedRecordId(null);
+        setSelectedScheduleId(null);
         setError(null);
         if (hideForm) {
             setActiveView('welcome');
         }
     };
 
-    const handleEditClick = (record) => {
+    const handleEditClick = (schedule) => {
         setIsEditing(true);
-        setSelectedRecordId(record.id);
-        setFormData({ ...record, trigger_hour: record.trigger_hour || '09', trigger_minute: record.trigger_minute || '00', trigger_ampm: record.trigger_ampm || 'am' });
+        setSelectedScheduleId(schedule.id);
+        setFormData({ ...schedule, trigger_hour: schedule.trigger_hour || '09', trigger_minute: schedule.trigger_minute || '00', trigger_ampm: schedule.trigger_ampm || 'am' });
         setActiveView('form');
     };
     
-    const handleDeleteClick = (record) => {
-        setRecordToDelete(record);
+    const handleDeleteClick = (schedule) => {
+        setScheduleToDelete(schedule);
         setShowDeleteModal(true);
     };
 
     const confirmDelete = async () => {
-        if (!recordToDelete) return;
+        if (!scheduleToDelete) return;
         try {
-            await apiClient.delete(`/api/records/${recordToDelete.id}`);
-            await fetchRecords();
+            await apiClient.delete(`/api/schedules/${scheduleToDelete.id}`);
+            await fetchSchedules();
         } catch (error) {
             setError("Failed to delete schedule.");
         } finally {
             setShowDeleteModal(false);
-            setRecordToDelete(null);
+            setScheduleToDelete(null);
         }
     };
     
-    const handleManualTrigger = async (recordId) => {
-        setTriggeringId(recordId);
+    const handleManualTrigger = async (scheduleId) => {
+        setTriggeringId(scheduleId);
         try {
-            await apiClient.post(`/api/records/${recordId}/trigger`);
-            await fetchRecords();
+            await apiClient.post(`/api/schedules/${scheduleId}/trigger`);
+            await fetchSchedules();
         } catch (error) {
             console.error("Manual trigger failed", error);
             setError("Manual trigger failed. Check server logs.");
@@ -181,7 +181,7 @@ function App() {
             <div className="h-screen w-screen bg-slate-100 font-sans text-slate-800 grid grid-cols-12">
                 {showDeleteModal && (
                     <ConfirmationModal 
-                        message={`Are you sure you want to delete the schedule for "${recordToDelete?.title}"? This cannot be undone.`}
+                        message={`Are you sure you want to delete the schedule for "${scheduleToDelete?.title}"? This cannot be undone.`}
                         onConfirm={confirmDelete}
                         onCancel={() => setShowDeleteModal(false)}
                     />
@@ -205,7 +205,7 @@ function App() {
 
                     <div className="flex-grow overflow-y-auto">
                         <ScheduleList 
-                            records={records}
+                            schedules={schedules}
                             trelloMembers={trelloMembers}
                             isLoading={isLoading}
                             triggeringId={triggeringId}

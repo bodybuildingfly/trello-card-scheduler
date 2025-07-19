@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 
-// --- Helper Icon Imports (UPDATED) ---
+// --- Helper Icon Imports ---
 const EditIcon = () => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-slate-500 group-hover:text-blue-700"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>;
 const DeleteIcon = () => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-slate-500 group-hover:text-red-700"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>;
 const Spinner = () => <div className="flex justify-center items-center p-10"><div className="w-10 h-10 border-4 border-sky-500 border-t-transparent rounded-full animate-spin"></div></div>;
@@ -10,6 +10,8 @@ const MONTHS_OF_YEAR = [ { id: '1', name: 'January' }, { id: '2', name: 'Februar
 
 /**
  * @description Formats a date string into a more readable format.
+ * @param {string} dateString - The date string to format.
+ * @returns {string} The formatted date string or 'N/A'.
  */
 const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
@@ -23,8 +25,9 @@ const formatDate = (dateString) => {
 
 /**
  * @description A component that displays a single collapsible category of schedules.
+ * @param {object} props - The component props.
  */
-const CategorySection = ({ categoryName, records, expandedItemId, onToggleExpand, ...rest }) => {
+const CategorySection = ({ categoryName, schedules, expandedItemId, onToggleExpand, ...rest }) => {
     const [isCategoryExpanded, setIsCategoryExpanded] = useState(true);
     return (
         <div>
@@ -32,19 +35,19 @@ const CategorySection = ({ categoryName, records, expandedItemId, onToggleExpand
                 onClick={() => setIsCategoryExpanded(!isCategoryExpanded)} 
                 className="w-full flex justify-between items-center text-left py-2 px-2 rounded-md hover:bg-slate-100"
             >
-                <span className="font-bold text-slate-700">{categoryName} ({records.length})</span>
+                <span className="font-bold text-slate-700">{categoryName} ({schedules.length})</span>
                 <span className={`transform transition-transform duration-200 ${isCategoryExpanded ? 'rotate-180' : 'rotate-0'}`}>
                     <ChevronDownIcon />
                 </span>
             </button>
             {isCategoryExpanded && (
                 <div className="pl-4 border-l-2 border-slate-200 ml-2">
-                    {records.map(record => (
+                    {schedules.map(schedule => (
                         <ScheduleItem 
-                            key={record.id} 
-                            record={record} 
-                            isExpanded={expandedItemId === record.id}
-                            onToggleExpand={() => onToggleExpand(record.id)}
+                            key={schedule.id} 
+                            schedule={schedule} 
+                            isExpanded={expandedItemId === schedule.id}
+                            onToggleExpand={() => onToggleExpand(schedule.id)}
                             {...rest} 
                         />
                     ))}
@@ -56,36 +59,37 @@ const CategorySection = ({ categoryName, records, expandedItemId, onToggleExpand
 
 /**
  * @description A component that displays a single scheduled item in the list, with an expandable details section.
+ * @param {object} props - The component props.
  */
-const ScheduleItem = ({ record, isExpanded, onToggleExpand, triggeringId, onEditClick, onDeleteClick, onManualTrigger, formatFrequency }) => (
+const ScheduleItem = ({ schedule, isExpanded, onToggleExpand, triggeringId, onEditClick, onDeleteClick, onManualTrigger, formatFrequency }) => (
     <div className="py-2 group border-b border-slate-100 last:border-b-0">
         <div className="flex items-start justify-between cursor-pointer" onClick={onToggleExpand}>
             <div>
-                <h3 className={`font-semibold transition-colors ${isExpanded ? 'text-sky-600' : 'text-slate-800 group-hover:text-sky-600'}`}>{record.title}</h3>
-                <p className="text-sm text-slate-500 mt-1">Assignee: {record.owner_name}</p>
+                <h3 className={`font-semibold transition-colors ${isExpanded ? 'text-sky-600' : 'text-slate-800 group-hover:text-sky-600'}`}>{schedule.title}</h3>
+                <p className="text-sm text-slate-500 mt-1">Assignee: {schedule.owner_name}</p>
             </div>
             <div className="flex items-center space-x-1 flex-shrink-0 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button onClick={(e) => { e.stopPropagation(); onEditClick(record); }} className="p-2 rounded-full hover:bg-slate-200"><EditIcon /></button>
-                <button onClick={(e) => { e.stopPropagation(); onDeleteClick(record); }} className="p-2 rounded-full hover:bg-slate-200"><DeleteIcon /></button>
+                <button onClick={(e) => { e.stopPropagation(); onEditClick(schedule); }} className="p-2 rounded-full hover:bg-slate-200"><EditIcon /></button>
+                <button onClick={(e) => { e.stopPropagation(); onDeleteClick(schedule); }} className="p-2 rounded-full hover:bg-slate-200"><DeleteIcon /></button>
             </div>
         </div>
         {isExpanded && (
             <div className="mt-3 pl-1 space-y-2 text-sm text-slate-600">
-                {record.description && <p className="italic">"{record.description.split('\n')[0]}"</p>}
-                <p><strong>Frequency:</strong> {formatFrequency(record)}</p>
-                {(record.start_date || record.end_date) && (
-                    <p><strong>Active Dates:</strong> {formatDate(record.start_date)} to {formatDate(record.end_date)}</p>
+                {schedule.description && <p className="italic">"{schedule.description.split('\n')[0]}"</p>}
+                <p><strong>Frequency:</strong> {formatFrequency(schedule)}</p>
+                {(schedule.start_date || schedule.end_date) && (
+                    <p><strong>Active Dates:</strong> {formatDate(schedule.start_date)} to {formatDate(schedule.end_date)}</p>
                 )}
-                {record.active_card_id && (
-                    <p><strong>Active Card:</strong> <a href={`https://trello.com/c/${record.active_card_id}`} target="_blank" rel="noopener noreferrer" className="font-semibold text-blue-600 hover:underline">View on Trello</a></p>
+                {schedule.active_card_id && (
+                    <p><strong>Active Card:</strong> <a href={`https://trello.com/c/${schedule.active_card_id}`} target="_blank" rel="noopener noreferrer" className="font-semibold text-blue-600 hover:underline">View on Trello</a></p>
                 )}
                 <div className="pt-2">
                     <button 
-                        onClick={() => onManualTrigger(record.id)} 
-                        disabled={triggeringId === record.id} 
+                        onClick={() => onManualTrigger(schedule.id)} 
+                        disabled={triggeringId === schedule.id} 
                         className="text-xs font-semibold bg-green-100 text-green-800 px-3 py-1 rounded-full hover:bg-green-200 disabled:bg-slate-200"
                     >
-                        {triggeringId === record.id ? 'Creating...' : 'Create Now'}
+                        {triggeringId === schedule.id ? 'Creating...' : 'Create Now'}
                     </button>
                 </div>
             </div>
@@ -96,9 +100,10 @@ const ScheduleItem = ({ record, isExpanded, onToggleExpand, triggeringId, onEdit
 
 /**
  * @description The main component for displaying and filtering the list of schedules.
+ * @param {object} props - The component props.
  */
 const ScheduleList = ({ 
-    records,
+    schedules,
     trelloMembers, 
     isLoading, 
     ...rest 
@@ -113,24 +118,24 @@ const ScheduleList = ({
         setExpandedItemId(prevId => (prevId === itemId ? null : itemId));
     };
 
-    const filteredAndGroupedRecords = useMemo(() => {
+    const filteredAndGroupedSchedules = useMemo(() => {
         const filtered = {};
-        for (const category in records) {
-            const filteredRecords = records[category].filter(record => {
-                const ownerMatch = filterOwner === 'all' || record.owner_name === filterOwner;
-                const frequencyMatch = filterFrequency === 'all' || record.frequency === filterFrequency;
-                const titleMatch = filterTitle === '' || record.title.toLowerCase().includes(filterTitle.toLowerCase());
+        for (const category in schedules) {
+            const filteredSchedules = schedules[category].filter(schedule => {
+                const ownerMatch = filterOwner === 'all' || schedule.owner_name === filterOwner;
+                const frequencyMatch = filterFrequency === 'all' || schedule.frequency === filterFrequency;
+                const titleMatch = filterTitle === '' || schedule.title.toLowerCase().includes(filterTitle.toLowerCase());
                 return ownerMatch && frequencyMatch && titleMatch;
             });
-            if (filteredRecords.length > 0) {
-                filtered[category] = filteredRecords;
+            if (filteredSchedules.length > 0) {
+                filtered[category] = filteredSchedules;
             }
         }
         return filtered;
-    }, [records, filterOwner, filterFrequency, filterTitle]);
+    }, [schedules, filterOwner, filterFrequency, filterTitle]);
 
-    const formatFrequency = (record) => {
-        const { frequency, frequency_interval, frequency_details, trigger_hour, trigger_minute, trigger_ampm } = record;
+    const formatFrequency = (schedule) => {
+        const { frequency, frequency_interval, frequency_details, trigger_hour, trigger_minute, trigger_ampm } = schedule;
         const interval = parseInt(frequency_interval, 10) || 1;
         let text = '';
         switch (frequency) {
@@ -186,11 +191,11 @@ const ScheduleList = ({
             
             {isLoading ? <Spinner /> : (
                 <div className="space-y-2">
-                    {Object.keys(filteredAndGroupedRecords).sort().map(categoryName => (
+                    {Object.keys(filteredAndGroupedSchedules).sort().map(categoryName => (
                         <CategorySection
                             key={categoryName}
                             categoryName={categoryName}
-                            records={filteredAndGroupedRecords[categoryName]}
+                            schedules={filteredAndGroupedSchedules[categoryName]}
                             expandedItemId={expandedItemId}
                             onToggleExpand={handleToggleExpand}
                             formatFrequency={formatFrequency}
