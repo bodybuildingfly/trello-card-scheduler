@@ -38,14 +38,22 @@ let appSettings = {};
 
 /**
  * @description Writes an audit event to the console and the database.
+ * It can now optionally include the user who performed the action.
  * @param {'INFO' | 'ERROR' | 'CRITICAL'} level - The severity level of the event.
  * @param {string} message - A description of the event.
  * @param {object} [details={}] - A JSON object containing relevant details.
+ * @param {object} [user=null] - The user object from the request (req.user).
  */
-const logAuditEvent = async (level, message, details = {}) => {
-    console.log(`[${level}] ${message}`, JSON.stringify(details));
+const logAuditEvent = async (level, message, details = {}, user = null) => {
+    const userId = user ? user.id : null;
+    const username = user ? user.username : null;
+
+    console.log(`[${level}] ${message}`, JSON.stringify({ ...details, user: username }));
     try {
-        await pool.query('INSERT INTO audit_logs(level, message, details) VALUES($1, $2, $3)', [level, message, details]);
+        await pool.query(
+            'INSERT INTO audit_logs(level, message, details, user_id, username) VALUES($1, $2, $3, $4, $5)',
+            [level, message, details, userId, username]
+        );
     } catch (err) {
         console.error(`[ERROR] Failed to write to audit log table: ${err.message}`);
     }
@@ -165,22 +173,32 @@ const createInitialAdmin = async () => {
     }
 };
 
-
-// --- API Routes Setup ---
+/**
+ * @description Middleware to attach server-level config and functions to each request object.
+ */
 const attachAppConfig = (req, res, next) => {
     req.appSettings = appSettings;
     req.loadSettings = loadSettings;
     req.reinitializeCronJob = () => reinitializeCronJob(appSettings, logAuditEvent);
-    req.logAuditEvent = logAuditEvent;
+    // This creates a user-specific version of the logger for each request
+    req.logAuditEvent = (level, message, details) => logAuditEvent(level, message, details, req.user);
     req.cronJob = getSchedulerInstance();
     next();
 };
 
+// --- API Routes Setup ---
 app.use('/api', attachAppConfig);
 app.use('/api/records', recordsRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/trello', trelloRoutes);
 app.use('/api', appStatusRoutes);
+
+// --- TEMPORARY TEST ROUTE ---
+app.get('/api/test-reload', (req, res) => {
+    res.send('Hot reload test successful! Version 1.'); 
+});
+
+
 app.use('/api/auth', authRoutes);
 app.use('/api/users', usersRoutes);
 

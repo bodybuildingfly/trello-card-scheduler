@@ -2,20 +2,21 @@ import bcrypt from 'bcryptjs';
 import pool from '../db.js';
 
 /**
- * @description Creates a new user.
+ * @description Creates a new user. Now includes audit logging.
  * @route POST /api/users
  * @access Private/Admin
  */
 export const createUser = async (req, res) => {
-    const { username, password, role } = req.body;
+    // Destructure the logAuditEvent function from the request object,
+    // which is placed there by our middleware.
     const { logAuditEvent } = req;
+    const { username, password, role } = req.body;
 
     if (!username || !password) {
         return res.status(400).json({ message: 'Please provide a username and password.' });
     }
 
     try {
-        // Check if user already exists
         const { rows: existingUsers } = await pool.query('SELECT id FROM users WHERE username = $1', [username]);
         if (existingUsers.length > 0) {
             return res.status(400).json({ message: 'User with that username already exists.' });
@@ -29,7 +30,9 @@ export const createUser = async (req, res) => {
             [username, passwordHash, role || 'user']
         );
 
-        await logAuditEvent('INFO', `New user created by admin ${req.user.username}: ${username}`, { createdUser: newUsers[0] });
+        // --- ADDED: Log the successful creation of a user ---
+        // The middleware ensures req.user contains the admin who is performing the action.
+        await logAuditEvent('INFO', `New user created: '${username}'`, { createdUser: newUsers[0] });
         res.status(201).json(newUsers[0]);
 
     } catch (error) {
@@ -39,7 +42,7 @@ export const createUser = async (req, res) => {
 };
 
 /**
- * @description Gets all users.
+ * @description Gets all users. This is a read-only action, so no audit log is needed.
  * @route GET /api/users
  * @access Private/Admin
  */
@@ -54,15 +57,14 @@ export const getAllUsers = async (req, res) => {
 };
 
 /**
- * @description Deletes a user by ID.
+ * @description Deletes a user by ID. Now includes audit logging.
  * @route DELETE /api/users/:id
  * @access Private/Admin
  */
 export const deleteUser = async (req, res) => {
-    const { id } = req.params;
     const { logAuditEvent } = req;
+    const { id } = req.params;
 
-    // Prevent admin from deleting themselves
     if (parseInt(id, 10) === req.user.id) {
         return res.status(400).json({ message: 'Admin cannot delete their own account.' });
     }
@@ -72,7 +74,9 @@ export const deleteUser = async (req, res) => {
         if (rows.length === 0) {
             return res.status(404).json({ message: 'User not found.' });
         }
-        await logAuditEvent('INFO', `User deleted by admin ${req.user.username}: ${rows[0].username}`);
+        
+        // --- ADDED: Log the successful deletion of a user ---
+        await logAuditEvent('INFO', `User deleted: '${rows[0].username}'`, { deletedUsername: rows[0].username });
         res.json({ message: `User ${rows[0].username} deleted successfully.` });
     } catch (error) {
         console.error('Delete user error:', error);

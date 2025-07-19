@@ -114,6 +114,16 @@ const SettingsPage = ({ onSettingsSaved }) => {
         }
     };
 
+    const handleTimeChange = (e) => {
+        const { name, value } = e.target;
+        // Get the current time from the cron string in formData
+        const currentTime = cronToTime(formData.CRON_SCHEDULE);
+        // Create the new time based on which dropdown changed
+        const newTime = { ...currentTime, [name]: value };
+        // Convert the new time back to a cron string and update the main form state
+        setFormData(prev => ({ ...prev, CRON_SCHEDULE: timeToCron(newTime.hour, newTime.minute, newTime.ampm) }));
+    };
+
     const handleFormChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
@@ -130,6 +140,27 @@ const SettingsPage = ({ onSettingsSaved }) => {
         } catch (err) {
             setError('Failed to save settings.');
         }
+    };
+
+    const cronToTime = (cronString) => {
+        const parts = (cronString || '0 1 * * *').split(' ');
+        if (parts.length < 2) return { hour: '01', minute: '00', ampm: 'am' };
+        
+        const minute = String(parts[0]).padStart(2, '0');
+        const hour24 = parseInt(parts[1], 10);
+        const ampm = hour24 >= 12 ? 'pm' : 'am';
+        let hour12 = hour24 % 12;
+        if (hour12 === 0) hour12 = 12; // 12 PM or 12 AM
+        
+        return { hour: String(hour12).padStart(2, '0'), minute, ampm };
+    };
+
+    const timeToCron = (hour12, minute, ampm) => {
+        let hour24 = parseInt(hour12, 10);
+        if (ampm === 'pm' && hour24 !== 12) hour24 += 12;
+        if (ampm === 'am' && hour24 === 12) hour24 = 0; // Midnight case
+        
+        return `${parseInt(minute, 10)} ${hour24} * * *`;
     };
 
     if (isLoading) return <Spinner />;
@@ -198,6 +229,44 @@ const SettingsPage = ({ onSettingsSaved }) => {
                                 <option value="">{isLoadingLabels ? 'Loading...' : 'Select a Label'}</option>
                                 {labels.map(label => <option key={label.id} value={label.id}>{label.name}</option>)}
                             </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="p-4 border rounded-lg">
+                    <h3 className="font-semibold text-lg mb-1">Step 3: Scheduler Configuration</h3>
+                    <p className="text-sm text-slate-500 mb-4">Set the time of day for the scheduler to run.</p>
+                    <div className="space-y-4">
+                        <div>
+                            <label className="form-label">Daily Run Time</label>
+                            <div className="flex items-center gap-2">
+                                <select 
+                                    name="hour" 
+                                    value={cronToTime(formData.CRON_SCHEDULE).hour} 
+                                    onChange={handleTimeChange} 
+                                    className="form-input"
+                                >
+                                    {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map(h => <option key={h} value={h}>{h}</option>)}
+                                </select>
+                                <span>:</span>
+                                <select 
+                                    name="minute" 
+                                    value={cronToTime(formData.CRON_SCHEDULE).minute} 
+                                    onChange={handleTimeChange} 
+                                    className="form-input"
+                                >
+                                    {Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0')).map(m => <option key={m} value={m}>{m}</option>)}
+                                </select>
+                                <select 
+                                    name="ampm" 
+                                    value={cronToTime(formData.CRON_SCHEDULE).ampm} 
+                                    onChange={handleTimeChange} 
+                                    className="form-input"
+                                >
+                                    <option value="am">AM</option>
+                                    <option value="pm">PM</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
                 </div>

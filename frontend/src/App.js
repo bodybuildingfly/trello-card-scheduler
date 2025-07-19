@@ -9,7 +9,7 @@ import TrelloConfigBanner from './components/TrelloConfigBanner';
 import ScheduleList from './components/ScheduleList';
 import ScheduleForm from './components/ScheduleForm';
 import ProtectedRoute from './components/ProtectedRoute';
-import UserManagementPage from './components/UserManagementPage'; // <-- NEW: Import UserManagementPage
+import UserManagementPage from './components/UserManagementPage';
 
 // --- Service & Context Imports ---
 import apiClient from './api';
@@ -28,7 +28,7 @@ function App() {
     const [trelloMembers, setTrelloMembers] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [activeTab, setActiveTab] = useState('schedules'); // Default to 'schedules'
+    const [activeTab, setActiveTab] = useState('schedules');
 
     // Form-related state
     const [isFormVisible, setIsFormVisible] = useState(false);
@@ -42,9 +42,10 @@ function App() {
 
     // Other state
     const [isTrelloConfigured, setIsTrelloConfigured] = useState(true);
-    const [statusKey, setStatusKey] = useState(0); // Used to force-refresh the status component
+    const [statusKey, setStatusKey] = useState(0);
+    const [triggeringId, setTriggeringId] = useState(null); // <-- ADDED: State for manual trigger
 
-    const { isAuthenticated, user, logout } = useAuth(); // Get auth status and user info
+    const { isAuthenticated, user, logout, isAdmin } = useAuth(); // <-- UPDATED: Destructure isAdmin for convenience
 
     // --- Data Fetching and Lifecycle ---
 
@@ -88,7 +89,6 @@ function App() {
         setIsLoading(false);
     }, [checkTrelloConfig, fetchRecords, setError, setIsLoading, setTrelloMembers]);
     
-    // Load data only when the user is authenticated.
     useEffect(() => {
         if (isAuthenticated) {
             loadInitialData();
@@ -147,11 +147,26 @@ function App() {
             setRecordToDelete(null);
         }
     };
+    
+    /**
+     * @description Handles the manual creation of a Trello card for a specific schedule.
+     * @param {number} recordId - The ID of the record to trigger.
+     */
+    const handleManualTrigger = async (recordId) => {
+        setTriggeringId(recordId);
+        try {
+            await apiClient.post(`/api/records/${recordId}/trigger`);
+            await fetchRecords(); // Refresh the list to show the new active_card_id
+        } catch (error) {
+            console.error("Manual trigger failed", error);
+            setError("Manual trigger failed. Check server logs.");
+        } finally {
+            setTriggeringId(null);
+        }
+    };
 
     return (
         <ProtectedRoute>
-            {/* Everything inside this ProtectedRoute component will only be rendered if the user is logged in. */}
-            {/* Otherwise, the LoginPage will be rendered automatically. */}
             <div className="bg-slate-100 min-h-screen font-sans text-slate-800">
                 {showDeleteModal && (
                     <ConfirmationModal 
@@ -163,9 +178,9 @@ function App() {
                 <main className="container mx-auto p-4 sm:p-6 lg:p-8">
                     <header className="my-8">
                         <div className="flex justify-between items-center">
-                            <div>
-                                <h1 className="text-5xl font-bold text-slate-900">Trello Card Scheduler</h1>
-                                <p className="text-slate-500 mt-3 text-lg">Automate Trello card creation on a recurring schedule.</p>
+                            <div className="flex-1">
+                                <h1 className="text-5xl font-bold text-slate-900 text-center">Trello Card Scheduler</h1>
+                                <p className="text-slate-500 mt-3 text-lg text-center">Automate Trello card creation on a recurring schedule.</p>
                             </div>
                             <div className="text-right">
                                 <p className="text-slate-600">Signed in as <span className="font-bold">{user?.username}</span></p>
@@ -184,17 +199,19 @@ function App() {
                                 <button onClick={() => setActiveTab('schedules')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'schedules' ? 'border-sky-500 text-sky-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}>
                                     Schedules
                                 </button>
-                                <button onClick={() => setActiveTab('audit')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'audit' ? 'border-sky-500 text-sky-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}>
-                                    Audit Log
-                                </button>
-                                <button onClick={() => setActiveTab('settings')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'settings' ? 'border-sky-500 text-sky-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}>
-                                    Settings
-                                </button>
-                                {/* NEW: User Management Tab - visible only to admins */}
-                                {user?.role === 'admin' && (
-                                    <button onClick={() => setActiveTab('users')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'users' ? 'border-sky-500 text-sky-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}>
-                                        User Management
-                                    </button>
+                                {/* --- UPDATED: Conditionally render admin-only tabs --- */}
+                                {isAdmin && (
+                                    <>
+                                        <button onClick={() => setActiveTab('audit')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'audit' ? 'border-sky-500 text-sky-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}>
+                                            Audit Log
+                                        </button>
+                                        <button onClick={() => setActiveTab('settings')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'settings' ? 'border-sky-500 text-sky-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}>
+                                            Settings
+                                        </button>
+                                        <button onClick={() => setActiveTab('users')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'users' ? 'border-sky-500 text-sky-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}>
+                                            User Management
+                                        </button>
+                                    </>
                                 )}
                             </nav>
                         </div>
@@ -225,17 +242,18 @@ function App() {
                                 records={records}
                                 trelloMembers={trelloMembers}
                                 isLoading={isLoading}
-                                triggeringId={null} // This state should be managed in App.js if needed
+                                triggeringId={triggeringId} // <-- UPDATED: Pass down the state
                                 onEditClick={handleEditClick}
                                 onDeleteClick={handleDeleteClick}
-                                onManualTrigger={() => {}} // This should be implemented in App.js
+                                onManualTrigger={handleManualTrigger} // <-- UPDATED: Pass down the handler
                             />
                         </>
                     )}
 
-                    {activeTab === 'audit' && user?.role === 'admin' && <AuditLogViewer />}
-                    {activeTab === 'settings' && user?.role === 'admin' && <SettingsPage onSettingsSaved={() => { setStatusKey(prev => prev + 1); loadInitialData(); }} />}
-                    {activeTab === 'users' && user?.role === 'admin' && <UserManagementPage />}
+                    {/* --- UPDATED: Conditionally render admin-only content --- */}
+                    {isAdmin && activeTab === 'audit' && <AuditLogViewer />}
+                    {isAdmin && activeTab === 'settings' && <SettingsPage onSettingsSaved={() => { setStatusKey(prev => prev + 1); loadInitialData(); }} />}
+                    {isAdmin && activeTab === 'users' && <UserManagementPage />}
                 </main>
             </div>
         </ProtectedRoute>

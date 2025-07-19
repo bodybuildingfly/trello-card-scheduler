@@ -81,12 +81,13 @@ const runScheduler = async (appSettings, logAuditEvent) => {
                     continue;
                 }
                 try {
-                    const newCard = await trelloService.createTrelloCard(schedule, nextDueDate, appSettings, logAuditEvent);
+                    // --- UPDATED: Pass the runId to the createTrelloCard function ---
+                    const newCard = await trelloService.createTrelloCard(schedule, nextDueDate, appSettings, logAuditEvent, runId);
                     if (newCard) {
                         await pool.query('UPDATE records SET active_card_id = $1, last_card_created_at = NOW(), needs_new_card = FALSE WHERE id = $2', [newCard.id, schedule.id]);
                     }
                 } catch (error) {
-                    await logAuditEvent('ERROR', `Scheduler failed to create new card for schedule ID ${schedule.id}.`, { error: String(error), runId });
+                    console.error(`Error during card creation for schedule ${schedule.id}:`, error);
                 }
             }
         }
@@ -107,14 +108,30 @@ export const reinitializeCronJob = (appSettings, logAuditEvent) => {
     if (cronJob) {
         cronJob.stop();
     }
-    cronJob = new CronJob(
-        appSettings.CRON_SCHEDULE,
-        () => runScheduler(appSettings, logAuditEvent), // Pass dependencies to the scheduled function
-        null,
-        true,
-        process.env.TZ || "America/New_York"
-    );
-    console.log(`[INFO] Cron job re-initialized with pattern: "${appSettings.CRON_SCHEDULE}" in timezone ${process.env.TZ || "America/New_York"}`);
+
+    const timeZone = process.env.TZ || "America/New_York";
+    const cronPattern = appSettings.CRON_SCHEDULE || '0 1 * * *';
+
+    if (typeof cronPattern !== 'string') {
+        console.error(`[CRITICAL] CRON_SCHEDULE is not a string! Found type: ${typeof cronPattern}. Halting cron initialization.`);
+        logAuditEvent('CRITICAL', 'Scheduler failed to start: CRON_SCHEDULE setting is not a valid string.');
+        return;
+    }
+
+    try {
+        cronJob = new CronJob(
+            cronPattern,
+            () => runScheduler(appSettings, logAuditEvent),
+            null,
+            true,
+            timeZone
+        );
+        
+        console.log(`[INFO] Cron job re-initialized with pattern: "${cronPattern}" in timezone ${timeZone}`);
+    } catch (err) {
+        console.error(`[CRITICAL] Failed to create CronJob. Invalid cron pattern or timezone? Pattern: "${cronPattern}", TZ: "${timeZone}"`);
+        logAuditEvent('CRITICAL', 'Scheduler failed to start: Invalid cron pattern.', { pattern: cronPattern, error: err.message });
+    }
 };
 
 /**
