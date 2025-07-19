@@ -5,32 +5,38 @@ const DAYS_OF_WEEK = [ { id: '1', name: 'Mon' }, { id: '2', name: 'Tue' }, { id:
 const MONTHS_OF_YEAR = [ { id: '1', name: 'January' }, { id: '2', name: 'February' }, { id: '3', name: 'March' }, { id: '4', name: 'April' }, { id: '5', name: 'May' }, { id: '6', name: 'June' }, { id: '7', name: 'July' }, { id: '8', name: 'August' }, { id: '9', name: 'September' }, { id: '10', name: 'October' }, { id: '11', name: 'November' }, { id: '12', name: 'December' }];
 const DAYS_OF_MONTH = Array.from({ length: 31 }, (_, i) => String(i + 1));
 
-// --- Component Definition ---
-// This component manages its own form state and calls parent functions via props on submit or cancel.
+/**
+ * @description A form for creating and editing scheduled Trello cards.
+ * It manages its own internal state and calls parent functions via props on submit or cancel.
+ * @param {object} props - The component props.
+ * @param {boolean} props.isEditing - Flag to determine if the form is in edit mode.
+ * @param {object} props.initialData - The initial data to populate the form with, especially for editing.
+ * @param {object[]} props.trelloMembers - The list of Trello members for the assignee dropdown.
+ * @param {boolean} props.isLoading - Flag to disable the submit button during API calls.
+ * @param {function} props.onSubmit - The function to call when the form is submitted.
+ * @param {function} props.onCancel - The function to call when the cancel button is clicked.
+ */
 const ScheduleForm = ({ 
     isEditing, 
     initialData, 
-    trelloMembers,
+    trelloMembers, 
     isLoading,
     onSubmit, 
     onCancel 
 }) => {
     
-    // The form's state now lives entirely within this component.
     const [formData, setFormData] = useState(initialData);
     const [showDates, setShowDates] = useState(!!(initialData.start_date || initialData.end_date));
     const [error, setError] = useState('');
     const formRef = useRef(null);
 
-    // When the initialData prop changes (i.e., when a user clicks edit on a different record),
-    // this effect updates the form's internal state.
     useEffect(() => {
         setFormData(initialData);
         setShowDates(!!(initialData.start_date || initialData.end_date));
     }, [initialData]);
 
     const handleInputChange = (e) => {
-        const { name, value, checked } = e.target;
+        const { name, value, type, checked } = e.target;
         
         if (name === 'weekly_day') {
             const currentDays = formData.frequency_details ? formData.frequency_details.split(',') : [];
@@ -58,7 +64,6 @@ const ScheduleForm = ({
             setError('Title and Owner are required fields.');
             return;
         }
-        // Call the onSubmit function passed down from App.js
         onSubmit(formData);
     };
 
@@ -81,7 +86,11 @@ const ScheduleForm = ({
                         </select>
                     </div>
                 </div>
-                
+
+                <div>
+                    <label htmlFor="category" className="form-label">Category</label>
+                    <input type="text" name="category" value={formData.category} onChange={handleInputChange} className="form-input" placeholder="e.g., Fitness, Work, Personal" />
+                </div>
                 <div className="p-4 border border-slate-200 rounded-lg space-y-4">
                     <h3 className="font-semibold text-lg">Frequency</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -163,7 +172,6 @@ const ScheduleForm = ({
                     <label htmlFor="description" className="form-label">Card Description</label>
                     <textarea name="description" rows="4" value={formData.description} onChange={handleInputChange} className="form-input" placeholder="Add details to the Trello card description..."></textarea>
                 </div>
-                
                 <div className="space-y-4">
                     <div className="flex items-center">
                         <input type="checkbox" id="showDates" name="showDates" checked={showDates} onChange={handleInputChange} className="h-4 w-4 rounded border-gray-300 text-sky-600 focus:ring-sky-500" />
@@ -186,9 +194,7 @@ const ScheduleForm = ({
                 {error && <p className="text-red-600 bg-red-100 p-3 rounded-lg text-center">{error}</p>}
 
                 <div className="flex items-center justify-end space-x-4 pt-4">
-                    {/* UPDATED: This now calls the onCancel prop passed from App.js */}
                     <button type="button" onClick={onCancel} className="px-6 py-2.5 rounded-lg bg-slate-200 text-slate-800 font-semibold hover:bg-slate-300">Cancel</button>
-                    {/* UPDATED: This now uses the isLoading prop for its disabled state and text */}
                     <button type="submit" disabled={isLoading} className="flex items-center justify-center px-6 py-2.5 rounded-lg bg-sky-600 text-white font-semibold hover:bg-sky-700 disabled:bg-sky-300 shadow-md">
                         {isLoading ? 'Saving...' : (isEditing ? 'Update Schedule' : 'Schedule Card')}
                     </button>

@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS records (
     id SERIAL PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
+    category VARCHAR(255) NOT NULL DEFAULT 'Uncategorized', -- <-- ADD THIS LINE
     owner_name VARCHAR(255),
     description TEXT,
     frequency VARCHAR(50) NOT NULL DEFAULT 'once',

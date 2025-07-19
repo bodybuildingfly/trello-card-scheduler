@@ -6,11 +6,15 @@ import {
     getLabels,
     getMembers
 } from '../controllers/trelloController.js';
+import { protect, isAdmin } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-// The routes now directly reference the controller functions.
-// The necessary config will be available on the `req` object via middleware.
+// --- Apply the 'protect' middleware to all routes in this file ---
+// This ensures that only authenticated users can access these endpoints,
+// and it makes the req.user object available to the controllers.
+router.use(protect, isAdmin);
+
 router.post('/credentials/test', testCredentials);
 router.get('/boards', getBoards);
 router.get('/lists/:boardId', getLists);

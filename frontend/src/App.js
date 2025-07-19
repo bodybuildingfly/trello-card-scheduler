@@ -15,26 +15,39 @@ import UserManagementPage from './components/UserManagementPage';
 import apiClient from './api';
 import { useAuth } from './context/AuthContext';
 
-// --- Helper Icon Imports ---
-const PlusIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
+// --- Helper Icon Imports (UPDATED) ---
+// Removed fixed width/height and added Tailwind classes for consistent sizing.
+const PlusIcon = () => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
+const SettingsIcon = () => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>;
+const AuditLogIcon = () => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>;
+const UsersIcon = () => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>;
 
 /**
- * @description The main application component. It acts as a container for all other components
- * and manages the primary application state that needs to be shared between them.
+ * @description A placeholder component to display in the main content area when no specific view is active.
+ */
+const WelcomeScreen = () => (
+    <div className="flex flex-col items-center justify-center h-full text-center text-slate-500">
+        <h2 className="text-3xl font-bold mb-2">Trello Card Scheduler</h2>
+        <p>Select a schedule on the left to view its details, or click "Schedule a New Card" to begin.</p>
+    </div>
+);
+
+/**
+ * @description The main application component.
  */
 function App() {
     // --- State Management ---
-    const [records, setRecords] = useState([]);
+    const [records, setRecords] = useState({});
     const [trelloMembers, setTrelloMembers] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [activeTab, setActiveTab] = useState('schedules');
+    const [activeView, setActiveView] = useState('welcome');
 
     // Form-related state
-    const [isFormVisible, setIsFormVisible] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [selectedRecordId, setSelectedRecordId] = useState(null);
-    const [formData, setFormData] = useState({ title: '', owner_name: '', description: '', frequency: 'once', frequency_interval: 1, frequency_details: '1', start_date: '', end_date: '', trigger_hour: '09', trigger_minute: '00', trigger_ampm: 'am' });
+    const initialFormState = { title: '', owner_name: '', description: '', category: '', frequency: 'once', frequency_interval: 1, frequency_details: '1', start_date: '', end_date: '', trigger_hour: '09', trigger_minute: '00', trigger_ampm: 'am' };
+    const [formData, setFormData] = useState(initialFormState);
 
     // Modal-related state
     const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -43,16 +56,15 @@ function App() {
     // Other state
     const [isTrelloConfigured, setIsTrelloConfigured] = useState(true);
     const [statusKey, setStatusKey] = useState(0);
-    const [triggeringId, setTriggeringId] = useState(null); // <-- ADDED: State for manual trigger
+    const [triggeringId, setTriggeringId] = useState(null);
 
-    const { isAuthenticated, user, logout, isAdmin } = useAuth(); // <-- UPDATED: Destructure isAdmin for convenience
+    const { isAuthenticated, user, logout, isAdmin } = useAuth();
 
     // --- Data Fetching and Lifecycle ---
-
     const fetchRecords = useCallback(async () => {
         try {
             const recordsRes = await apiClient.get('/api/records');
-            setRecords(recordsRes.data.map(r => ({...r, start_date: r.start_date ? new Date(r.start_date).toISOString().slice(0, 10) : '', end_date: r.end_date ? new Date(r.end_date).toISOString().slice(0, 10) : ''})));
+            setRecords(recordsRes.data);
         } catch (err) {
             console.error("Records Fetch Error:", err);
             setError("Failed to load scheduled cards.");
@@ -62,8 +74,7 @@ function App() {
     const checkTrelloConfig = useCallback(async () => {
         try {
             const res = await apiClient.get('/api/settings');
-            const { isConfigured, TRELLO_BOARD_ID, TRELLO_LIST_ID } = res.data;
-            const configured = isConfigured && TRELLO_BOARD_ID && TRELLO_LIST_ID;
+            const configured = res.data.isConfigured;
             setIsTrelloConfigured(configured);
             return configured;
         } catch {
@@ -75,18 +86,23 @@ function App() {
     const loadInitialData = useCallback(async () => {
         setIsLoading(true);
         setError(null);
-        const configured = await checkTrelloConfig();
-        if (configured) {
-            try {
-                const membersRes = await apiClient.get('/api/trello/members');
-                setTrelloMembers(membersRes.data);
-            } catch (err) {
-                setError('Failed to load Trello members. Check server logs and Trello config.');
-                console.error("Trello Fetch Error:", err);
+        try {
+            const configured = await checkTrelloConfig();
+            if (configured) {
+                try {
+                    const membersRes = await apiClient.get('/api/trello/members');
+                    setTrelloMembers(membersRes.data);
+                } catch (err) {
+                    console.error("Trello Fetch Error:", err);
+                    setError('Failed to load Trello members. Check server logs and Trello config.');
+                }
             }
+            await fetchRecords();
+        } catch (err) {
+            setError('Failed to load initial application data.');
+        } finally {
+            setIsLoading(false);
         }
-        await fetchRecords();
-        setIsLoading(false);
     }, [checkTrelloConfig, fetchRecords, setError, setIsLoading, setTrelloMembers]);
     
     useEffect(() => {
@@ -96,7 +112,6 @@ function App() {
     }, [isAuthenticated, loadInitialData]);
 
     // --- Event Handlers ---
-
     const handleFormSubmit = async (submittedFormData) => {
         setIsLoading(true);
         const method = isEditing ? 'put' : 'post';
@@ -114,12 +129,12 @@ function App() {
     };
 
     const resetForm = (hideForm = false) => {
-        setFormData({ title: '', owner_name: '', description: '', frequency: 'once', frequency_interval: 1, frequency_details: '1', start_date: '', end_date: '', trigger_hour: '09', trigger_minute: '00', trigger_ampm: 'am' });
+        setFormData(initialFormState);
         setIsEditing(false);
         setSelectedRecordId(null);
         setError(null);
         if (hideForm) {
-            setIsFormVisible(false);
+            setActiveView('welcome');
         }
     };
 
@@ -127,7 +142,7 @@ function App() {
         setIsEditing(true);
         setSelectedRecordId(record.id);
         setFormData({ ...record, trigger_hour: record.trigger_hour || '09', trigger_minute: record.trigger_minute || '00', trigger_ampm: record.trigger_ampm || 'am' });
-        setIsFormVisible(true);
+        setActiveView('form');
     };
     
     const handleDeleteClick = (record) => {
@@ -148,15 +163,11 @@ function App() {
         }
     };
     
-    /**
-     * @description Handles the manual creation of a Trello card for a specific schedule.
-     * @param {number} recordId - The ID of the record to trigger.
-     */
     const handleManualTrigger = async (recordId) => {
         setTriggeringId(recordId);
         try {
             await apiClient.post(`/api/records/${recordId}/trigger`);
-            await fetchRecords(); // Refresh the list to show the new active_card_id
+            await fetchRecords();
         } catch (error) {
             console.error("Manual trigger failed", error);
             setError("Manual trigger failed. Check server logs.");
@@ -167,7 +178,7 @@ function App() {
 
     return (
         <ProtectedRoute>
-            <div className="bg-slate-100 min-h-screen font-sans text-slate-800">
+            <div className="h-screen w-screen bg-slate-100 font-sans text-slate-800 grid grid-cols-12">
                 {showDeleteModal && (
                     <ConfirmationModal 
                         message={`Are you sure you want to delete the schedule for "${recordToDelete?.title}"? This cannot be undone.`}
@@ -175,85 +186,79 @@ function App() {
                         onCancel={() => setShowDeleteModal(false)}
                     />
                 )}
-                <main className="container mx-auto p-4 sm:p-6 lg:p-8">
-                    <header className="my-8">
-                        <div className="flex justify-between items-center">
-                            <div className="flex-1">
-                                <h1 className="text-5xl font-bold text-slate-900 text-center">Trello Card Scheduler</h1>
-                                <p className="text-slate-500 mt-3 text-lg text-center">Automate Trello card creation on a recurring schedule.</p>
-                            </div>
-                            <div className="text-right">
-                                <p className="text-slate-600">Signed in as <span className="font-bold">{user?.username}</span></p>
-                                <button onClick={logout} className="text-sm text-sky-600 hover:text-sky-800 hover:underline">Logout</button>
-                            </div>
-                        </div>
-                    </header>
 
-                    {!isTrelloConfigured && <TrelloConfigBanner onGoToSettings={() => setActiveTab('settings')} />}
-
-                    <SchedulerStatus key={statusKey} isConfigured={isTrelloConfigured} onStatusUpdate={() => setStatusKey(prev => prev + 1)} />
-
-                    <div className="max-w-5xl mx-auto mb-8">
-                        <div className="border-b border-slate-200">
-                            <nav className="-mb-px flex space-x-8" aria-label="Tabs">
-                                <button onClick={() => setActiveTab('schedules')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'schedules' ? 'border-sky-500 text-sky-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}>
-                                    Schedules
-                                </button>
-                                {/* --- UPDATED: Conditionally render admin-only tabs --- */}
-                                {isAdmin && (
-                                    <>
-                                        <button onClick={() => setActiveTab('audit')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'audit' ? 'border-sky-500 text-sky-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}>
-                                            Audit Log
-                                        </button>
-                                        <button onClick={() => setActiveTab('settings')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'settings' ? 'border-sky-500 text-sky-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}>
-                                            Settings
-                                        </button>
-                                        <button onClick={() => setActiveTab('users')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'users' ? 'border-sky-500 text-sky-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}>
-                                            User Management
-                                        </button>
-                                    </>
-                                )}
-                            </nav>
-                        </div>
+                {/* --- Left Sidebar --- */}
+                <aside className="col-span-4 bg-white p-6 flex flex-col border-r border-slate-200">
+                    <div className="text-center mb-6">
+                        <h1 className="text-2xl font-bold text-slate-900">Trello Scheduler</h1>
                     </div>
 
-                    {activeTab === 'schedules' && (
-                        <>
-                            {!isFormVisible && (
-                                <div className="text-center mb-8">
-                                    <button onClick={() => { resetForm(); setIsFormVisible(true); }} disabled={!isTrelloConfigured} className="flex items-center justify-center mx-auto px-6 py-3 rounded-lg bg-sky-600 text-white font-semibold hover:bg-sky-700 shadow-md disabled:bg-slate-400 disabled:cursor-not-allowed">
-                                        <PlusIcon /> <span className="ml-2">Schedule a New Card</span>
-                                    </button>
-                                </div>
-                            )}
-                            
-                            {isFormVisible && (
-                                <ScheduleForm
-                                    isEditing={isEditing}
-                                    initialData={formData}
-                                    trelloMembers={trelloMembers}
-                                    isLoading={isLoading}
-                                    onSubmit={handleFormSubmit}
-                                    onCancel={() => resetForm(true)}
-                                />
-                            )}
+                    <div className="mb-6">
+                        <button 
+                            onClick={() => { resetForm(); setActiveView('form'); }} 
+                            disabled={!isTrelloConfigured} 
+                            className="w-full flex items-center justify-center px-4 py-3 rounded-lg bg-sky-600 text-white font-semibold hover:bg-sky-700 shadow-md disabled:bg-slate-400 disabled:cursor-not-allowed"
+                        >
+                            <PlusIcon /> <span className="ml-2">Schedule a New Card</span>
+                        </button>
+                    </div>
 
-                            <ScheduleList 
-                                records={records}
+                    <div className="flex-grow overflow-y-auto">
+                        <ScheduleList 
+                            records={records}
+                            trelloMembers={trelloMembers}
+                            isLoading={isLoading}
+                            triggeringId={triggeringId}
+                            onEditClick={handleEditClick}
+                            onDeleteClick={handleDeleteClick}
+                            onManualTrigger={handleManualTrigger}
+                        />
+                    </div>
+
+                    {/* --- Admin & User Section --- */}
+                    <div className="mt-auto pt-6 border-t border-slate-200">
+                        {isAdmin && (
+                            <nav className="space-y-2 mb-4">
+                                <p className="px-3 text-xs font-semibold uppercase text-slate-400">Admin</p>
+                                <a href="#" onClick={(e) => { e.preventDefault(); setActiveView('settings'); }} className={`flex items-center px-3 py-2 text-slate-600 hover:bg-slate-100 rounded-md ${activeView === 'settings' && 'bg-slate-100 font-bold'}`}>
+                                    <SettingsIcon /> <span className="ml-3">Settings</span>
+                                </a>
+                                <a href="#" onClick={(e) => { e.preventDefault(); setActiveView('audit'); }} className={`flex items-center px-3 py-2 text-slate-600 hover:bg-slate-100 rounded-md ${activeView === 'audit' && 'bg-slate-100 font-bold'}`}>
+                                    <AuditLogIcon /> <span className="ml-3">Audit Log</span>
+                                </a>
+                                <a href="#" onClick={(e) => { e.preventDefault(); setActiveView('users'); }} className={`flex items-center px-3 py-2 text-slate-600 hover:bg-slate-100 rounded-md ${activeView === 'users' && 'bg-slate-100 font-bold'}`}>
+                                    <UsersIcon /> <span className="ml-3">User Management</span>
+                                </a>
+                            </nav>
+                        )}
+                        <div className="text-center">
+                            <p className="text-sm text-slate-600">Signed in as <span className="font-bold">{user?.username}</span></p>
+                            <button onClick={logout} className="text-sm text-sky-600 hover:text-sky-800 hover:underline">Logout</button>
+                        </div>
+                    </div>
+                </aside>
+
+                {/* --- Main Content Area --- */}
+                <main className="col-span-8 p-8 overflow-y-auto">
+                    {!isTrelloConfigured && <TrelloConfigBanner onGoToSettings={() => setActiveView('settings')} />}
+                    <SchedulerStatus key={statusKey} isConfigured={isTrelloConfigured} onStatusUpdate={() => setStatusKey(prev => prev + 1)} />
+                    
+                    <div className="mt-8">
+                        {activeView === 'welcome' && <WelcomeScreen />}
+                        {activeView === 'form' && (
+                            <ScheduleForm
+                                isEditing={isEditing}
+                                initialData={formData}
                                 trelloMembers={trelloMembers}
                                 isLoading={isLoading}
-                                triggeringId={triggeringId} // <-- UPDATED: Pass down the state
-                                onEditClick={handleEditClick}
-                                onDeleteClick={handleDeleteClick}
-                                onManualTrigger={handleManualTrigger} // <-- UPDATED: Pass down the handler
+                                onSubmit={handleFormSubmit}
+                                onCancel={() => resetForm(true)}
                             />
-                        </>
-                    )}
-
-                    {/* --- UPDATED: Conditionally render admin-only content --- */}
-                    {isAdmin && activeTab === 'audit' && <AuditLogViewer />}
-                    {isAdmin && activeTab === 'settings' && <SettingsPage onSettingsSaved={() => { setStatusKey(prev => prev + 1); loadInitialData(); }} />}
-                    {isAdmin && activeTab === 'users' && <UserManagementPage />}
+                        )}
+                        {isAdmin && activeView === 'audit' && <AuditLogViewer />}
+                        {isAdmin && activeView === 'settings' && <SettingsPage onSettingsSaved={() => { setStatusKey(prev => prev + 1); loadInitialData(); }} />}
+                        {isAdmin && activeView === 'users' && <UserManagementPage />}
+                    </div>
                 </main>
             </div>
         </ProtectedRoute>

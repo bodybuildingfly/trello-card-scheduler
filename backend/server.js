@@ -195,7 +195,7 @@ app.use('/api', appStatusRoutes);
 
 // --- TEMPORARY TEST ROUTE ---
 app.get('/api/test-reload', (req, res) => {
-    res.send('Hot reload test successful! Version 1.'); 
+    res.send('Hot reload test successful! Version 2.'); 
 });
 
 

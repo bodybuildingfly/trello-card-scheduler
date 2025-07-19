@@ -10,7 +10,7 @@ let cronJob;
  * @param {object} schedule - The schedule record from the database.
  * @returns {Date} The next due date.
  */
-const calculateNextDueDate = (schedule) => {
+export const calculateNextDueDate = (schedule) => { // <-- UPDATED: Added export
     const { frequency, frequency_interval, frequency_details, last_card_created_at, start_date, trigger_hour, trigger_minute, trigger_ampm } = schedule;
     const baseDate = last_card_created_at ? new Date(Math.max(new Date(last_card_created_at), new Date(start_date || 0))) : new Date(start_date || Date.now());
     let nextDate = new Date(baseDate);
@@ -81,7 +81,6 @@ const runScheduler = async (appSettings, logAuditEvent) => {
                     continue;
                 }
                 try {
-                    // --- UPDATED: Pass the runId to the createTrelloCard function ---
                     const newCard = await trelloService.createTrelloCard(schedule, nextDueDate, appSettings, logAuditEvent, runId);
                     if (newCard) {
                         await pool.query('UPDATE records SET active_card_id = $1, last_card_created_at = NOW(), needs_new_card = FALSE WHERE id = $2', [newCard.id, schedule.id]);

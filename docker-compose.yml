@@ -1,9 +1,5 @@
 # --- Docker Compose File for Development ---
-# version: Specifies the file format version. '3.8' is a recent, stable version.
-version: '3.8'
-
 # services: Defines the different containers that make up your application.
-# In this case, we only have one service named 'app'.
 services:
   app:
     # container_name: This is the equivalent of the '--name' flag in your docker run command.
@@ -13,7 +9,7 @@ services:
     build:
       # context: The path to the directory containing the Dockerfile. '.' means the current directory.
       context: .
-      # dockerfile: The name of the Dockerfile to use. This matches your '-f' flag.
+      # dockerfile: The name of the Dockerfile to use.
       dockerfile: Dockerfile.dev
 
     # ports: This is the equivalent of the '-p' flag. It maps host ports to container ports.
@@ -22,25 +18,21 @@ services:
       - "5000:5000" # For the Node.js backend
 
     # volumes: This is the key section for enabling live code changes.
-    # It creates a live sync between your local machine and the container.
     volumes:
       # Syncs the entire project directory on your machine to the /app directory in the container.
       - .:/app
-      # These "anonymous volumes" are a crucial best practice. They prevent your local
-      # node_modules folders from overwriting the ones installed inside the container,
-      # which can cause platform-specific errors.
+      # These "anonymous volumes" prevent local node_modules from overwriting the container's.
       - /app/node_modules
       - /app/frontend/node_modules
       - /app/backend/node_modules
 
-    # environment: This is the equivalent of the '-e' flag.
-    # It sets the environment variables inside the container.
-    # For security, it's best to manage these with a .env file (see note below).
+    # environment: This sets the environment variables inside the container.
     environment:
       - DB_HOST=192.168.1.121
       - DB_USER=trelloSchedulerAdmin
       - DB_PASSWORD=odE1M9d*oWXZj@Uh4Ooa
-      - DB_NAME=trelloScheduler
+      - DB_NAME=trelloSchedulerDev
       - DB_PORT=5432
       - TZ=America/New_York
       - WDS_SOCKET_PORT=0
+      - WATCHPACK_POLLING=true
