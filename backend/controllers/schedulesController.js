@@ -50,18 +50,18 @@ export const getUniqueCategories = async (req, res) => {
  * @access Private
  */
 export const createSchedule = async (req, res) => {
-    const { title, owner_name, description, category, frequency, frequency_interval, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date, end_date } = req.body;
+    const { title, owner_name, description, category, frequency, frequency_interval, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date, end_date, trello_label_id } = req.body;
     
     if (!title || !owner_name) {
         return res.status(400).json({ error: 'Title and Owner are required.' });
     }
 
     const query = `
-        INSERT INTO schedules (title, owner_name, description, category, frequency, frequency_interval, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date, end_date) 
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) 
+        INSERT INTO schedules (title, owner_name, description, category, frequency, frequency_interval, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date, end_date, trello_label_id) 
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) 
         RETURNING *;
     `;
-    const values = [title, owner_name, description, category || 'Uncategorized', frequency, frequency_interval || 1, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date || null, end_date || null];
+    const values = [title, owner_name, description, category || 'Uncategorized', frequency, frequency_interval || 1, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date || null, end_date || null, trello_label_id || null];
     
     try {
         const result = await pool.query(query, values);
@@ -80,7 +80,7 @@ export const createSchedule = async (req, res) => {
  */
 export const updateSchedule = async (req, res) => {
     const { id } = req.params;
-    const { title, owner_name, description, category, frequency, frequency_interval, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date, end_date } = req.body;
+    const { title, owner_name, description, category, frequency, frequency_interval, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date, end_date, trello_label_id } = req.body;
     
     if (!title || !owner_name) {
         return res.status(400).json({ error: 'Title and Owner are required.' });
@@ -96,11 +96,11 @@ export const updateSchedule = async (req, res) => {
             UPDATE schedules SET 
             title = $1, owner_name = $2, description = $3, category = $4, frequency = $5, 
             frequency_interval = $6, frequency_details = $7, trigger_hour = $8, 
-            trigger_minute = $9, trigger_ampm = $10, start_date = $11, end_date = $12 
-            WHERE id = $13 
+            trigger_minute = $9, trigger_ampm = $10, start_date = $11, end_date = $12, trello_label_id = $13
+            WHERE id = $14 
             RETURNING *;
         `;
-        const values = [title, owner_name, description, category || 'Uncategorized', frequency, frequency_interval || 1, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date || null, end_date || null, id];
+        const values = [title, owner_name, description, category || 'Uncategorized', frequency, frequency_interval || 1, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date || null, end_date || null, trello_label_id || null, id];
         const result = await pool.query(query, values);
         
         await logAuditEvent('INFO', `Schedule updated: "${result.rows[0].title}"`, { before: beforeResult.rows[0], after: result.rows[0] }, req.user);
@@ -148,14 +148,7 @@ export const triggerSchedule = async (req, res) => {
         }
         
         const schedule = rows[0];
-
-        if (req.user.role !== 'admin' && req.user.username !== schedule.owner_name) {
-            await logAuditEvent('ERROR', `Unauthorized attempt to trigger schedule by user '${req.user.username}'.`, { scheduleId: id, owner: schedule.owner_name }, req.user);
-            return res.status(403).json({ error: 'You are not authorized to trigger this schedule.' });
-        }
-        
         const nextDueDate = calculateNextDueDate(schedule);
-        
         const newCard = await trelloService.createTrelloCard(schedule, nextDueDate, appSettings);
         
         if (newCard) {
@@ -199,15 +192,15 @@ export const cloneSchedule = async (req, res) => {
         };
 
         const query = `
-            INSERT INTO schedules (title, owner_name, description, category, frequency, frequency_interval, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date, end_date, needs_new_card) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) 
+            INSERT INTO schedules (title, owner_name, description, category, frequency, frequency_interval, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date, end_date, needs_new_card, trello_label_id) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) 
             RETURNING *;
         `;
         const values = [
             newSchedule.title, newSchedule.owner_name, newSchedule.description, newSchedule.category, 
             newSchedule.frequency, newSchedule.frequency_interval, newSchedule.frequency_details, 
             newSchedule.trigger_hour, newSchedule.trigger_minute, newSchedule.trigger_ampm, 
-            newSchedule.start_date, newSchedule.end_date, newSchedule.needs_new_card
+            newSchedule.start_date, newSchedule.end_date, newSchedule.needs_new_card, newSchedule.trello_label_id
         ];
 
         const result = await pool.query(query, values);

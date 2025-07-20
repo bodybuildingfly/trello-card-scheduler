@@ -30,25 +30,23 @@ export const getTrelloCard = async (cardId, appSettings) => {
         return response.data;
     } catch (error) {
         if (error.response && error.response.status === 404) {
-            return null; // Card not found is not a critical error
+            return null;
         }
-        // Re-throw other errors to be handled by the caller
         throw error;
     }
 };
 
 /**
- * @description Creates a new Trello card using axios. This function no longer handles logging.
- * @param {object} schedule - The schedule record from the database.
+ * @description Creates a new Trello card using axios.
+ * @param {object} schedule - The schedule object from the database.
  * @param {Date} dueDate - The calculated due date for the new card.
  * @param {object} appSettings - The application settings object.
  * @returns {Promise<object|null>} A promise that resolves to the new card object or null on failure.
  */
 export const createTrelloCard = async (schedule, dueDate, appSettings) => {
-    const { TRELLO_API_KEY, TRELLO_API_TOKEN, TRELLO_TO_DO_LIST_ID, TRELLO_BOARD_ID, TRELLO_LABEL_ID } = appSettings;
+    const { TRELLO_API_KEY, TRELLO_API_TOKEN, TRELLO_TO_DO_LIST_ID, TRELLO_BOARD_ID } = appSettings;
 
     if (!TRELLO_TO_DO_LIST_ID) {
-        // Throw an error instead of logging, so the caller can handle it.
         throw new Error(`Card creation failed: 'To Do List ID' is not configured in settings.`);
     }
 
@@ -66,14 +64,13 @@ export const createTrelloCard = async (schedule, dueDate, appSettings) => {
         due: dueDate.toISOString()
     };
 
-    if (TRELLO_LABEL_ID) {
-        cardData.idLabels = [TRELLO_LABEL_ID];
+    // Use the label ID from the individual schedule object if it exists.
+    if (schedule.trello_label_id) {
+        cardData.idLabels = [schedule.trello_label_id];
     }
 
     const url = `https://api.trello.com/1/cards?key=${TRELLO_API_KEY}&token=${TRELLO_API_TOKEN}`;
     
-    // Axios will throw an error automatically on a non-2xx response,
-    // which will be caught by the calling function (e.g., runScheduler).
     const response = await axios.post(url, cardData);
     
     return response.data;

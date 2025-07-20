@@ -17,7 +17,7 @@ import apiClient from './api';
 import { useAuth } from './context/AuthContext';
 
 // --- Helper Icon Imports ---
-const PlusIcon = () => <svg xmlns="http://www.w.org/2000/svg" width="20" height="20" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
+const PlusIcon = () => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
 const SettingsIcon = () => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>;
 const AuditLogIcon = () => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>;
 const UsersIcon = () => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>;
@@ -40,15 +40,17 @@ function App() {
     // --- State Management ---
     const [schedules, setSchedules] = useState({});
     const [trelloMembers, setTrelloMembers] = useState([]);
-    const [categories, setCategories] = useState([]); // State for the category list
+    const [trelloLabels, setTrelloLabels] = useState([]);
+    const [categories, setCategories] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
     const [activeView, setActiveView] = useState('welcome');
+    const [expandedItemId, setExpandedItemId] = useState(null);
 
     // Form-related state
     const [isEditing, setIsEditing] = useState(false);
     const [selectedScheduleId, setSelectedScheduleId] = useState(null);
-    const initialFormState = { title: '', owner_name: '', description: '', category: '', frequency: 'once', frequency_interval: 1, frequency_details: '1', start_date: '', end_date: '', trigger_hour: '09', trigger_minute: '00', trigger_ampm: 'am' };
+    const initialFormState = { title: '', owner_name: '', description: '', category: '', frequency: 'once', frequency_interval: 1, frequency_details: '1', start_date: '', end_date: '', trigger_hour: '09', trigger_minute: '00', trigger_ampm: 'am', trello_label_id: '' };
     const [formData, setFormData] = useState(initialFormState);
 
     // Modal-related state
@@ -63,7 +65,6 @@ function App() {
     const { isAuthenticated, user, logout, isAdmin } = useAuth();
 
     // --- Data Fetching and Lifecycle ---
-
     const fetchSchedules = useCallback(async () => {
         try {
             const res = await apiClient.get('/api/schedules');
@@ -80,7 +81,6 @@ function App() {
             setCategories(res.data);
         } catch (err) {
             console.error("Categories Fetch Error:", err);
-            // This is a non-critical error, so we don't set a global error state
         }
     }, []);
 
@@ -100,27 +100,27 @@ function App() {
         setIsLoading(true);
         setError(null);
         try {
-            const configured = await checkTrelloConfig();
+            const { data: settings } = await apiClient.get('/api/settings');
+            const configured = settings.isConfigured;
+            setIsTrelloConfigured(configured);
+
             if (configured) {
-                try {
-                    await Promise.all([
-                        fetchSchedules(),
-                        fetchCategories(),
-                        apiClient.get('/api/trello/members').then(res => setTrelloMembers(res.data))
-                    ]);
-                } catch (err) {
-                    console.error("Trello Fetch Error:", err);
-                    setError('Failed to load Trello members. Check server logs and Trello config.');
-                }
+                await Promise.all([
+                    fetchSchedules(),
+                    fetchCategories(),
+                    apiClient.get('/api/trello/members').then(res => setTrelloMembers(res.data)),
+                    apiClient.get(`/api/trello/labels/${settings.TRELLO_BOARD_ID}`).then(res => setTrelloLabels(res.data))
+                ]);
             } else {
                 await fetchSchedules();
             }
         } catch (err) {
+            console.error("Failed to load initial data:", err);
             setError('Failed to load initial application data.');
         } finally {
             setIsLoading(false);
         }
-    }, [checkTrelloConfig, fetchSchedules, fetchCategories, setError, setIsLoading, setTrelloMembers]);
+    }, [fetchSchedules, fetchCategories, setError, setIsLoading, setTrelloMembers, setIsTrelloConfigured]);
     
     useEffect(() => {
         if (isAuthenticated) {
@@ -136,7 +136,6 @@ function App() {
         
         try {
           await apiClient[method](url, submittedFormData);
-          // Refresh both schedules and categories in case a new category was added
           await Promise.all([fetchSchedules(), fetchCategories()]);
           resetForm(true);
         } catch (err) {
@@ -153,14 +152,8 @@ function App() {
         setError(null);
         if (hideForm) {
             setActiveView('welcome');
+            setExpandedItemId(null); // Collapse any expanded item when form is cancelled
         }
-    };
-
-    const handleEditClick = (schedule) => {
-        setIsEditing(true);
-        setSelectedScheduleId(schedule.id);
-        setFormData({ ...schedule, trigger_hour: schedule.trigger_hour || '09', trigger_minute: schedule.trigger_minute || '00', trigger_ampm: schedule.trigger_ampm || 'am' });
-        setActiveView('form');
     };
     
     const handleDeleteClick = (schedule) => {
@@ -204,6 +197,19 @@ function App() {
         }
     };
 
+   /**
+     * @description Handles the selection of a schedule item from the list.
+     * It opens the edit form and expands the selected item.
+     * @param {object} schedule - The schedule object that was clicked.
+     */
+    const handleItemSelect = (schedule) => {
+        setIsEditing(true);
+        setSelectedScheduleId(schedule.id);
+        setFormData({ ...schedule, trigger_hour: schedule.trigger_hour || '09', trigger_minute: schedule.trigger_minute || '00', trigger_ampm: schedule.trigger_ampm || 'am' });
+        setActiveView('form');
+        setExpandedItemId(prevId => (prevId === schedule.id ? null : schedule.id));
+    };
+
     return (
         <ProtectedRoute>
             <div className="h-screen w-screen bg-slate-100 font-sans text-slate-800 grid grid-cols-12">
@@ -219,6 +225,7 @@ function App() {
                 <aside className="col-span-4 bg-white p-6 flex flex-col border-r border-slate-200">
                     <div className="text-center mb-6">
                         <h1 className="text-2xl font-bold text-slate-900">Trello Scheduler</h1>
+                        <p className="text-xs text-slate-400 mt-1">Version {process.env.REACT_APP_VERSION}</p>
                     </div>
 
                     <div className="mb-6">
@@ -237,7 +244,8 @@ function App() {
                             trelloMembers={trelloMembers}
                             isLoading={isLoading}
                             triggeringId={triggeringId}
-                            onEditClick={handleEditClick}
+                            expandedItemId={expandedItemId}
+                            onItemSelect={handleItemSelect}
                             onDeleteClick={handleDeleteClick}
                             onCloneClick={handleCloneClick}
                             onManualTrigger={handleManualTrigger}
@@ -282,10 +290,13 @@ function App() {
                                 isEditing={isEditing}
                                 initialData={formData}
                                 trelloMembers={trelloMembers}
+                                trelloLabels={trelloLabels}
                                 categories={categories}
                                 isLoading={isLoading}
+                                triggeringId={triggeringId}
                                 onSubmit={handleFormSubmit}
                                 onCancel={() => resetForm(true)}
+                                onManualTrigger={handleManualTrigger}
                             />
                         )}
                         {isAdmin && activeView === 'dashboard' && <DashboardPage />}

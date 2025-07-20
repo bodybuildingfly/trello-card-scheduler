@@ -17,7 +17,7 @@ export const getStats = async (req, res) => {
             pool.query('SELECT COUNT(*) FROM schedules'),
             pool.query("SELECT COUNT(*) FROM audit_logs WHERE message LIKE 'Card creation successful%'"),
             pool.query("SELECT username, COUNT(*) as count FROM audit_logs WHERE message LIKE 'Card creation successful%' AND username IS NOT NULL GROUP BY username ORDER BY count DESC"),
-            pool.query('SELECT category, COUNT(*) as count FROM schedules GROUP BY category ORDER BY count DESC')
+            pool.query("SELECT COALESCE(category, 'Uncategorized') as category, COUNT(*) as count FROM schedules GROUP BY COALESCE(category, 'Uncategorized') ORDER BY count DESC")
         ]);
 
         // Assemble the final statistics object

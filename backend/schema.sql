@@ -39,7 +39,8 @@ CREATE TABLE IF NOT EXISTS schedules (
     end_date DATE,
     active_card_id VARCHAR(255),
     last_card_created_at TIMESTAMP WITH TIME ZONE,
-    needs_new_card BOOLEAN DEFAULT TRUE
+    needs_new_card BOOLEAN DEFAULT TRUE,
+    trello_label_id VARCHAR(255)
 );
 
 

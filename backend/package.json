@@ -1,6 +1,6 @@
 {
   "name": "trello-card-scheduler",
-  "version": "1.0.0",
+  "version": "0.5.0",
   "description": "Backend API for the Trello card scheduler app.",
   "main": "server.js",
   "type": "module",

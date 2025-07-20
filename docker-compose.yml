@@ -33,6 +33,8 @@ services:
       - DB_PASSWORD=odE1M9d*oWXZj@Uh4Ooa
       - DB_NAME=trelloSchedulerDev
       - DB_PORT=5432
+      - ADMIN_USERNAME=bodybuildingfly
+      - ADMIN_PASSWORD=yrO$a*LD7mBGeVOPQ0@j
       - TZ=America/New_York
       - WDS_SOCKET_PORT=0
       - WATCHPACK_POLLING=true

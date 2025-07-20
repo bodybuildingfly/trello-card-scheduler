@@ -1,10 +1,16 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import apiClient from '../api';
 
+// --- Helper Components ---
 const Spinner = () => <div className="flex justify-center items-center p-10"><div className="w-10 h-10 border-4 border-sky-500 border-t-transparent rounded-full animate-spin"></div></div>;
 
+/**
+ * @description A page for administrators to configure application settings.
+ * @param {object} props - The component props.
+ * @param {function} props.onSettingsSaved - A callback function to run after settings are successfully saved.
+ */
 const SettingsPage = ({ onSettingsSaved }) => {
-    // Overall state
+    // --- State Management ---
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
@@ -16,25 +22,43 @@ const SettingsPage = ({ onSettingsSaved }) => {
     const [testResult, setTestResult] = useState({ status: '', message: '' });
     const [areCredentialsSaved, setAreCredentialsSaved] = useState(false);
 
-    // Step 2: Board/List/Label State
+    // Step 2: Board/List State
     const [boards, setBoards] = useState([]);
     const [lists, setLists] = useState([]);
-    const [labels, setLabels] = useState([]);
-    const [doneLists, setDoneLists] = useState([]);
     const [isLoadingBoards, setIsLoadingBoards] = useState(false);
     const [isLoadingLists, setIsLoadingLists] = useState(false);
-    const [isLoadingLabels, setIsLoadingLabels] = useState(false);
     
     // Step 3: Combined Form State
     const [formData, setFormData] = useState({
         TRELLO_BOARD_ID: '',
         TRELLO_TO_DO_LIST_ID: '',
         TRELLO_DONE_LIST_ID: '',
-        TRELLO_LABEL_ID: '',
         CRON_SCHEDULE: '0 1 * * *',
     });
 
-    // Fetch initial settings to determine UI state
+    // --- Helper Functions ---
+    const cronToTime = (cronString) => {
+        const parts = (cronString || '0 1 * * *').split(' ');
+        if (parts.length < 2) return { hour: '01', minute: '00', ampm: 'am' };
+        
+        const minute = String(parts[0]).padStart(2, '0');
+        const hour24 = parseInt(parts[1], 10);
+        const ampm = hour24 >= 12 ? 'pm' : 'am';
+        let hour12 = hour24 % 12;
+        if (hour12 === 0) hour12 = 12;
+        
+        return { hour: String(hour12).padStart(2, '0'), minute, ampm };
+    };
+
+    const timeToCron = (hour12, minute, ampm) => {
+        let hour24 = parseInt(hour12, 10);
+        if (ampm === 'pm' && hour24 !== 12) hour24 += 12;
+        if (ampm === 'am' && hour24 === 12) hour24 = 0;
+        
+        return `${parseInt(minute, 10)} ${hour24} * * *`;
+    };
+
+    // --- Data Fetching ---
     useEffect(() => {
         const fetchInitialSettings = async () => {
             setIsLoading(true);
@@ -45,7 +69,6 @@ const SettingsPage = ({ onSettingsSaved }) => {
                     TRELLO_BOARD_ID: res.data.TRELLO_BOARD_ID || '',
                     TRELLO_TO_DO_LIST_ID: res.data.TRELLO_TO_DO_LIST_ID || '',
                     TRELLO_DONE_LIST_ID: res.data.TRELLO_DONE_LIST_ID || '',
-                    TRELLO_LABEL_ID: res.data.TRELLO_LABEL_ID || '',
                     CRON_SCHEDULE: res.data.CRON_SCHEDULE || '0 1 * * *',
                 });
             } catch (err) {
@@ -56,7 +79,6 @@ const SettingsPage = ({ onSettingsSaved }) => {
         fetchInitialSettings();
     }, []);
 
-    // Fetch boards if credentials are saved
     useEffect(() => {
         if (areCredentialsSaved) {
             setIsLoadingBoards(true);
@@ -67,28 +89,19 @@ const SettingsPage = ({ onSettingsSaved }) => {
         }
     }, [areCredentialsSaved]);
 
-    // Fetch lists and labels when a board is selected
     useEffect(() => {
         if (formData.TRELLO_BOARD_ID) {
             setIsLoadingLists(true);
             apiClient.get(`/api/trello/lists/${formData.TRELLO_BOARD_ID}`)
                 .then(res => {
                     setLists(res.data);
-                    setDoneLists(res.data); // Both dropdowns use the same list source
                 })
                 .catch(() => setError('Could not fetch lists for the selected board.'))
                 .finally(() => setIsLoadingLists(false));
-
-            setIsLoadingLabels(true);
-            apiClient.get(`/api/trello/labels/${formData.TRELLO_BOARD_ID}`)
-                .then(res => {
-                    setLabels(res.data);
-                })
-                .catch(() => setError('Could not fetch labels for the selected board.'))
-                .finally(() => setIsLoadingLabels(false));
         }
     }, [formData.TRELLO_BOARD_ID]);
 
+    // --- Event Handlers ---
     const handleCredentialTest = async () => {
         setIsTesting(true);
         setTestResult({ status: '', message: '' });
@@ -108,25 +121,22 @@ const SettingsPage = ({ onSettingsSaved }) => {
             setAreCredentialsSaved(true);
             setApiKey('');
             setApiToken('');
-            setTestResult({ status: '', message: '' }); // Clear test result
+            setTestResult({ status: '', message: '' });
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to save credentials.');
         }
     };
 
-    const handleTimeChange = (e) => {
-        const { name, value } = e.target;
-        // Get the current time from the cron string in formData
-        const currentTime = cronToTime(formData.CRON_SCHEDULE);
-        // Create the new time based on which dropdown changed
-        const newTime = { ...currentTime, [name]: value };
-        // Convert the new time back to a cron string and update the main form state
-        setFormData(prev => ({ ...prev, CRON_SCHEDULE: timeToCron(newTime.hour, newTime.minute, newTime.ampm) }));
-    };
-
     const handleFormChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleTimeChange = (e) => {
+        const { name, value } = e.target;
+        const currentTime = cronToTime(formData.CRON_SCHEDULE);
+        const newTime = { ...currentTime, [name]: value };
+        setFormData(prev => ({ ...prev, CRON_SCHEDULE: timeToCron(newTime.hour, newTime.minute, newTime.ampm) }));
     };
 
     const handleSubmit = async (e) => {
@@ -140,27 +150,6 @@ const SettingsPage = ({ onSettingsSaved }) => {
         } catch (err) {
             setError('Failed to save settings.');
         }
-    };
-
-    const cronToTime = (cronString) => {
-        const parts = (cronString || '0 1 * * *').split(' ');
-        if (parts.length < 2) return { hour: '01', minute: '00', ampm: 'am' };
-        
-        const minute = String(parts[0]).padStart(2, '0');
-        const hour24 = parseInt(parts[1], 10);
-        const ampm = hour24 >= 12 ? 'pm' : 'am';
-        let hour12 = hour24 % 12;
-        if (hour12 === 0) hour12 = 12; // 12 PM or 12 AM
-        
-        return { hour: String(hour12).padStart(2, '0'), minute, ampm };
-    };
-
-    const timeToCron = (hour12, minute, ampm) => {
-        let hour24 = parseInt(hour12, 10);
-        if (ampm === 'pm' && hour24 !== 12) hour24 += 12;
-        if (ampm === 'am' && hour24 === 12) hour24 = 0; // Midnight case
-        
-        return `${parseInt(minute, 10)} ${hour24} * * *`;
     };
 
     if (isLoading) return <Spinner />;
@@ -196,7 +185,7 @@ const SettingsPage = ({ onSettingsSaved }) => {
                     </div>
                 </div>
 
-                {/* --- Step 2: Board, List, and Label Selection --- */}
+                {/* --- Step 2: Board & List Selection --- */}
                 <div className={`p-4 border rounded-lg ${!areCredentialsSaved && 'opacity-50'}`}>
                     <h3 className="font-semibold text-lg mb-1">Step 2: Target Board and Lists</h3>
                     <p className="text-sm text-slate-500 mb-4">Choose where to create and track cards.</p>
@@ -220,19 +209,13 @@ const SettingsPage = ({ onSettingsSaved }) => {
                             <label htmlFor="TRELLO_DONE_LIST_ID" className="form-label">ID for "Done" List</label>
                              <select name="TRELLO_DONE_LIST_ID" id="TRELLO_DONE_LIST_ID" value={formData.TRELLO_DONE_LIST_ID} onChange={handleFormChange} className="form-input" disabled={isLoadingLists || !formData.TRELLO_BOARD_ID}>
                                 <option value="">{isLoadingLists ? 'Loading...' : 'Select a List'}</option>
-                                {doneLists.map(list => <option key={list.id} value={list.id}>{list.name}</option>)}
-                            </select>
-                        </div>
-                        <div>
-                            <label htmlFor="TRELLO_LABEL_ID" className="form-label">ID for Label</label>
-                             <select name="TRELLO_LABEL_ID" id="TRELLO_LABEL_ID" value={formData.TRELLO_LABEL_ID} onChange={handleFormChange} className="form-input" disabled={isLoadingLabels || !formData.TRELLO_BOARD_ID}>
-                                <option value="">{isLoadingLabels ? 'Loading...' : 'Select a Label'}</option>
-                                {labels.map(label => <option key={label.id} value={label.id}>{label.name}</option>)}
+                                {lists.map(list => <option key={list.id} value={list.id}>{list.name}</option>)}
                             </select>
                         </div>
                     </div>
                 </div>
-
+                
+                {/* --- Step 3: Scheduler Configuration --- */}
                 <div className="p-4 border rounded-lg">
                     <h3 className="font-semibold text-lg mb-1">Step 3: Scheduler Configuration</h3>
                     <p className="text-sm text-slate-500 mb-4">Set the time of day for the scheduler to run.</p>
@@ -271,7 +254,6 @@ const SettingsPage = ({ onSettingsSaved }) => {
                     </div>
                 </div>
 
-                {/* --- Final Save --- */}
                 {error && <p className="text-red-600 bg-red-100 p-3 rounded-lg text-center">{error}</p>}
                 {success && <p className="text-green-600 bg-green-100 p-3 rounded-lg text-center">{success}</p>}
 
