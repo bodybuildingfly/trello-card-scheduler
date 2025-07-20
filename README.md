@@ -4,7 +4,7 @@ The Trello Card Scheduler is a full-stack web application designed to automate t
 
 <!-- You can replace this with a real screenshot of your application -->
 
-## ✨ Major Features
+## Major Features
 
 ### For All Users:
 
@@ -31,7 +31,7 @@ The Trello Card Scheduler is a full-stack web application designed to automate t
     * Reset a user's password, which generates a new, secure temporary password.
 * **Audit Log:** A detailed audit log provides a chronological record of all important events in the application, including user actions (like creating a schedule or deleting a user) and system events (like a scheduler run).
 
-## 🚀 Deployment with Docker
+## Deployment with Docker
 
 This application is designed to be deployed as a single Docker container.
 
