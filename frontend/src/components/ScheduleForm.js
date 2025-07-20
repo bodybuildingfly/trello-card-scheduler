@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 
 // --- Helper Data (Specific to this form) ---
 const DAYS_OF_WEEK = [ { id: '1', name: 'Mon' }, { id: '2', name: 'Tue' }, { id: '3', name: 'Wed' }, { id: '4', name: 'Thu' }, { id: '5', name: 'Fri' }, { id: '6', name: 'Sat' }, { id: '0', name: 'Sun' }];
@@ -6,20 +6,103 @@ const MONTHS_OF_YEAR = [ { id: '1', name: 'January' }, { id: '2', name: 'Februar
 const DAYS_OF_MONTH = Array.from({ length: 31 }, (_, i) => String(i + 1));
 
 /**
- * @description A form for creating and editing scheduled Trello cards.
- * It manages its own internal state and calls parent functions via props on submit or cancel.
+ * @description A reusable combobox component that allows selecting from a list or creating a new entry.
  * @param {object} props - The component props.
- * @param {boolean} props.isEditing - Flag to determine if the form is in edit mode.
- * @param {object} props.initialData - The initial data to populate the form with, especially for editing.
- * @param {object[]} props.trelloMembers - The list of Trello members for the assignee dropdown.
- * @param {boolean} props.isLoading - Flag to disable the submit button during API calls.
- * @param {function} props.onSubmit - The function to call when the form is submitted.
- * @param {function} props.onCancel - The function to call when the cancel button is clicked.
+ * @param {string} props.value - The currently selected value.
+ * @param {function} props.onChange - The function to call when the value changes.
+ * @param {string[]} props.options - The list of available options.
+ */
+const CategoryCombobox = ({ value, onChange, options }) => {
+    const [inputValue, setInputValue] = useState(value || '');
+    const [isOpen, setIsOpen] = useState(false);
+    const wrapperRef = useRef(null);
+
+    useEffect(() => {
+        setInputValue(value || '');
+    }, [value]);
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const filteredOptions = useMemo(() => {
+        // If the current input value is an exact match for one of the options,
+        // it means the user has likely selected it and is now re-opening the dropdown
+        // to see other choices. In this case, we should show all options.
+        const isExistingOption = options.some(opt => opt.toLowerCase() === (inputValue || '').toLowerCase());
+
+        if (!inputValue || (isOpen && isExistingOption)) {
+            return options;
+        }
+
+        // Otherwise, filter as the user types.
+        return options.filter(option => 
+            option.toLowerCase().includes(inputValue.toLowerCase())
+        );
+    }, [inputValue, options, isOpen]);
+
+    const handleSelect = (selectedValue) => {
+        onChange(selectedValue);
+        setInputValue(selectedValue);
+        setIsOpen(false);
+    };
+
+    const canCreateNew = inputValue && !options.some(opt => opt.toLowerCase() === inputValue.toLowerCase());
+
+    return (
+        <div className="relative" ref={wrapperRef}>
+            <input
+                type="text"
+                value={inputValue}
+                onChange={(e) => {
+                    setInputValue(e.target.value);
+                    onChange(e.target.value); // Allow direct typing
+                }}
+                onFocus={() => setIsOpen(true)}
+                className="form-input"
+                placeholder="e.g., Fitness, Work, Personal"
+            />
+            {isOpen && (
+                <ul className="absolute z-10 w-full bg-white border border-slate-300 rounded-md shadow-lg mt-1 max-h-60 overflow-auto">
+                    {filteredOptions.map(option => (
+                        <li
+                            key={option}
+                            onClick={() => handleSelect(option)}
+                            className="px-3 py-2 text-sm text-slate-700 cursor-pointer hover:bg-sky-100"
+                        >
+                            {option}
+                        </li>
+                    ))}
+                    {canCreateNew && (
+                        <li
+                            onClick={() => handleSelect(inputValue)}
+                            className="px-3 py-2 text-sm text-sky-600 font-semibold cursor-pointer hover:bg-sky-100"
+                        >
+                            Create new category: "{inputValue}"
+                        </li>
+                    )}
+                </ul>
+            )}
+        </div>
+    );
+};
+
+
+/**
+ * @description A form for creating and editing scheduled Trello cards.
+ * @param {object} props - The component props.
  */
 const ScheduleForm = ({ 
     isEditing, 
     initialData, 
     trelloMembers, 
+    categories,
     isLoading,
     onSubmit, 
     onCancel 
@@ -71,7 +154,7 @@ const ScheduleForm = ({
 
     return (
         <div ref={formRef} className="bg-white p-6 sm:p-8 rounded-2xl shadow-lg mb-10 max-w-3xl mx-auto">
-            <h2 className="text-3xl font-semibold text-slate-800 mb-6 border-b border-slate-200 pb-4">{isEditing ? 'Edit Scheduled Card' : 'Schedule a New Card'}</h2>
+            <h2 className="text-3xl font-semibold text-slate-800 mb-6 border-b border-slate-200 pb-4">{isEditing ? 'Edit Schedule' : 'Schedule a New Card'}</h2>
             <form onSubmit={handleFormSubmit} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
@@ -89,8 +172,13 @@ const ScheduleForm = ({
 
                 <div>
                     <label htmlFor="category" className="form-label">Category</label>
-                    <input type="text" name="category" value={formData.category} onChange={handleInputChange} className="form-input" placeholder="e.g., Fitness, Work, Personal" />
+                    <CategoryCombobox 
+                        value={formData.category}
+                        onChange={(newCategory) => setFormData(prev => ({ ...prev, category: newCategory }))}
+                        options={categories}
+                    />
                 </div>
+                
                 <div className="p-4 border border-slate-200 rounded-lg space-y-4">
                     <h3 className="font-semibold text-lg">Frequency</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -172,6 +260,7 @@ const ScheduleForm = ({
                     <label htmlFor="description" className="form-label">Card Description</label>
                     <textarea name="description" rows="4" value={formData.description} onChange={handleInputChange} className="form-input" placeholder="Add details to the Trello card description..."></textarea>
                 </div>
+                
                 <div className="space-y-4">
                     <div className="flex items-center">
                         <input type="checkbox" id="showDates" name="showDates" checked={showDates} onChange={handleInputChange} className="h-4 w-4 rounded border-gray-300 text-sky-600 focus:ring-sky-500" />

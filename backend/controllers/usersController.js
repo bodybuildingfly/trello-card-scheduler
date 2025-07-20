@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import pool from '../db.js';
 import logAuditEvent from '../utils/logger.js';
+import crypto from 'crypto'; // Import the crypto library for generating random passwords
 
 /**
  * @description Creates a new user.
@@ -15,7 +16,6 @@ export const createUser = async (req, res) => {
     }
 
     try {
-        // Check if user already exists
         const { rows: existingUsers } = await pool.query('SELECT id FROM users WHERE username = $1', [username]);
         if (existingUsers.length > 0) {
             return res.status(400).json({ message: 'User with that username already exists.' });
@@ -29,7 +29,6 @@ export const createUser = async (req, res) => {
             [username, passwordHash, role || 'user']
         );
 
-        // Use the imported logger, passing req.user
         await logAuditEvent('INFO', `New user created: '${username}'`, { createdUser: newUsers[0] }, req.user);
         res.status(201).json(newUsers[0]);
 
@@ -62,7 +61,6 @@ export const getAllUsers = async (req, res) => {
 export const deleteUser = async (req, res) => {
     const { id } = req.params;
 
-    // Prevent admin from deleting themselves
     if (parseInt(id, 10) === req.user.id) {
         return res.status(400).json({ message: 'Admin cannot delete their own account.' });
     }
@@ -73,11 +71,51 @@ export const deleteUser = async (req, res) => {
             return res.status(404).json({ message: 'User not found.' });
         }
         
-        // Use the imported logger, passing req.user
         await logAuditEvent('INFO', `User deleted: '${rows[0].username}'`, { deletedUsername: rows[0].username }, req.user);
         res.json({ message: `User ${rows[0].username} deleted successfully.` });
     } catch (error) {
         console.error('Delete user error:', error);
         res.status(500).json({ message: 'Server error while deleting user.' });
+    }
+};
+
+/**
+ * @description Resets a user's password to a new random password.
+ * @route PUT /api/users/:id/reset-password
+ * @access Private/Admin
+ */
+export const resetPassword = async (req, res) => {
+    const { id } = req.params;
+
+    // Prevent admin from resetting their own password through this endpoint for safety.
+    if (parseInt(id, 10) === req.user.id) {
+        return res.status(400).json({ message: 'Admin cannot reset their own password here.' });
+    }
+
+    try {
+        // Generate a secure, random temporary password.
+        const tempPassword = crypto.randomBytes(8).toString('hex');
+        
+        const salt = await bcrypt.genSalt(10);
+        const passwordHash = await bcrypt.hash(tempPassword, salt);
+
+        const { rows } = await pool.query(
+            'UPDATE users SET password_hash = $1 WHERE id = $2 RETURNING username',
+            [passwordHash, id]
+        );
+
+        if (rows.length === 0) {
+            return res.status(404).json({ message: 'User not found.' });
+        }
+
+        const targetUsername = rows[0].username;
+        await logAuditEvent('INFO', `Password reset for user: '${targetUsername}'`, { targetUser: targetUsername }, req.user);
+
+        // Return the temporary password to the admin so they can provide it to the user.
+        res.json({ message: `Password for ${targetUsername} has been reset.`, temporaryPassword: tempPassword });
+
+    } catch (error) {
+        console.error('Reset password error:', error);
+        res.status(500).json({ message: 'Server error while resetting password.' });
     }
 };

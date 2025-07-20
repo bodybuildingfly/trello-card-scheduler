@@ -3,6 +3,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 // --- Helper Icon Imports ---
 const EditIcon = () => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-slate-500 group-hover:text-blue-700"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>;
 const DeleteIcon = () => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-slate-500 group-hover:text-red-700"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>;
+const CloneIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-slate-500 group-hover:text-green-700"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>;
 const Spinner = () => <div className="flex justify-center items-center p-10"><div className="w-10 h-10 border-4 border-sky-500 border-t-transparent rounded-full animate-spin"></div></div>;
 const ChevronDownIcon = () => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><polyline points="6 9 12 15 18 9"></polyline></svg>;
 const DAYS_OF_WEEK = [ { id: '1', name: 'Mon' }, { id: '2', name: 'Tue' }, { id: '3', name: 'Wed' }, { id: '4', name: 'Thu' }, { id: '5', name: 'Fri' }, { id: '6', name: 'Sat' }, { id: '0', name: 'Sun' }];
@@ -61,7 +62,7 @@ const CategorySection = ({ categoryName, schedules, expandedItemId, onToggleExpa
  * @description A component that displays a single scheduled item in the list, with an expandable details section.
  * @param {object} props - The component props.
  */
-const ScheduleItem = ({ schedule, isExpanded, onToggleExpand, triggeringId, onEditClick, onDeleteClick, onManualTrigger, formatFrequency }) => (
+const ScheduleItem = ({ schedule, isExpanded, onToggleExpand, triggeringId, onEditClick, onDeleteClick, onCloneClick, onManualTrigger, formatFrequency }) => (
     <div className="py-2 group border-b border-slate-100 last:border-b-0">
         <div className="flex items-start justify-between cursor-pointer" onClick={onToggleExpand}>
             <div>
@@ -69,8 +70,9 @@ const ScheduleItem = ({ schedule, isExpanded, onToggleExpand, triggeringId, onEd
                 <p className="text-sm text-slate-500 mt-1">Assignee: {schedule.owner_name}</p>
             </div>
             <div className="flex items-center space-x-1 flex-shrink-0 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button onClick={(e) => { e.stopPropagation(); onEditClick(schedule); }} className="p-2 rounded-full hover:bg-slate-200"><EditIcon /></button>
-                <button onClick={(e) => { e.stopPropagation(); onDeleteClick(schedule); }} className="p-2 rounded-full hover:bg-slate-200"><DeleteIcon /></button>
+                <button onClick={(e) => { e.stopPropagation(); onCloneClick(schedule.id); }} className="p-2 rounded-full hover:bg-slate-200" title="Clone Schedule"><CloneIcon /></button>
+                <button onClick={(e) => { e.stopPropagation(); onEditClick(schedule); }} className="p-2 rounded-full hover:bg-slate-200" title="Edit Schedule"><EditIcon /></button>
+                <button onClick={(e) => { e.stopPropagation(); onDeleteClick(schedule); }} className="p-2 rounded-full hover:bg-slate-200" title="Delete Schedule"><DeleteIcon /></button>
             </div>
         </div>
         {isExpanded && (

@@ -1,5 +1,5 @@
 import express from 'express';
-import { createUser, getAllUsers, deleteUser } from '../controllers/usersController.js';
+import { createUser, getAllUsers, deleteUser, resetPassword } from '../controllers/usersController.js';
 import { protect, isAdmin } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
@@ -10,22 +10,19 @@ const router = express.Router();
  */
 
 // Apply the 'protect' and 'isAdmin' middleware to all routes in this file.
-// This ensures only logged-in admins can access these endpoints.
 router.use(protect, isAdmin);
 
-// @route   GET /api/users
-// @desc    Get all users
-// @access  Private/Admin
-router.get('/', getAllUsers);
+// --- User Collection Routes ---
+router.route('/')
+    .get(getAllUsers)
+    .post(createUser);
 
-// @route   POST /api/users
-// @desc    Create a new user
-// @access  Private/Admin
-router.post('/', createUser);
+// --- Single User Routes ---
+router.route('/:id')
+    .delete(deleteUser);
 
-// @route   DELETE /api/users/:id
-// @desc    Delete a user
-// @access  Private/Admin
-router.delete('/:id', deleteUser);
+// --- Password Reset Route ---
+router.put('/:id/reset-password', resetPassword);
+
 
 export default router;

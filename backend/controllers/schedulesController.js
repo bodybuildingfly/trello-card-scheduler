@@ -29,6 +29,23 @@ export const getAllSchedules = async (req, res) => {
 };
 
 /**
+ * @description Gets a unique list of all categories.
+ * @route GET /api/schedules/categories
+ * @access Private
+ */
+export const getUniqueCategories = async (req, res) => {
+    try {
+        const result = await pool.query("SELECT DISTINCT category FROM schedules WHERE category IS NOT NULL AND category <> '' ORDER BY category ASC");
+        // The result is an array of objects, so we map it to a simple array of strings.
+        const categories = result.rows.map(row => row.category);
+        res.status(200).json(categories);
+    } catch (err) {
+        console.error('Failed to fetch categories.', err);
+        res.status(500).json({ error: 'Failed to fetch categories.', details: err.message });
+    }
+};
+
+/**
  * @description Creates a new schedule.
  * @route POST /api/schedules
  * @access Private
@@ -150,6 +167,53 @@ export const triggerSchedule = async (req, res) => {
             response: error.response?.data || error.message,
         };
         await logAuditEvent('ERROR', `Manual trigger failed for schedule ${id}.`, errorDetails, req.user);
+        res.status(500).json({ error: 'Internal server error.' });
+    }
+};
+
+/**
+ * @description Clones an existing schedule, creating a new one with a modified title.
+ * @route POST /api/schedules/:id/clone
+ * @access Private
+ */
+export const cloneSchedule = async (req, res) => {
+    const { id } = req.params;
+    try {
+        const { rows } = await pool.query('SELECT * FROM schedules WHERE id = $1', [id]);
+        if (rows.length === 0) {
+            return res.status(404).json({ error: 'Schedule to clone not found.' });
+        }
+        
+        const originalSchedule = rows[0];
+        const newSchedule = {
+            ...originalSchedule,
+            title: `${originalSchedule.title} (Copy)`,
+            active_card_id: null,
+            last_card_created_at: null,
+            needs_new_card: true,
+        };
+
+        const query = `
+            INSERT INTO schedules (title, owner_name, description, category, frequency, frequency_interval, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date, end_date, needs_new_card) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) 
+            RETURNING *;
+        `;
+        const values = [
+            newSchedule.title, newSchedule.owner_name, newSchedule.description, newSchedule.category, 
+            newSchedule.frequency, newSchedule.frequency_interval, newSchedule.frequency_details, 
+            newSchedule.trigger_hour, newSchedule.trigger_minute, newSchedule.trigger_ampm, 
+            newSchedule.start_date, newSchedule.end_date, newSchedule.needs_new_card
+        ];
+
+        const result = await pool.query(query, values);
+        const clonedSchedule = result.rows[0];
+
+        await logAuditEvent('INFO', `Schedule cloned: "${clonedSchedule.title}"`, { originalId: id, newId: clonedSchedule.id }, req.user);
+        res.status(201).json(clonedSchedule);
+
+    } catch (error) {
+        console.error('Clone schedule error:', error);
+        await logAuditEvent('ERROR', `Failed to clone schedule ${id}.`, { error: String(error) }, req.user);
         res.status(500).json({ error: 'Internal server error.' });
     }
 };
