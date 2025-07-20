@@ -1,6 +1,7 @@
 import pool from '../db.js';
 import * as trelloService from '../services/trelloService.js';
 import { calculateNextDueDate } from '../services/schedulerService.js';
+import logAuditEvent from '../utils/logger.js';
 
 /**
  * @description Gets all schedules, grouped by category.
@@ -11,7 +12,6 @@ export const getAllSchedules = async (req, res) => {
     try {
         const result = await pool.query('SELECT * FROM schedules ORDER BY category ASC, id ASC');
         
-        // Group schedules by category before sending to the client
         const groupedSchedules = result.rows.reduce((acc, schedule) => {
             const category = schedule.category || 'Uncategorized';
             if (!acc[category]) {
@@ -34,7 +34,6 @@ export const getAllSchedules = async (req, res) => {
  * @access Private
  */
 export const createSchedule = async (req, res) => {
-    const { logAuditEvent } = req;
     const { title, owner_name, description, category, frequency, frequency_interval, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date, end_date } = req.body;
     
     if (!title || !owner_name) {
@@ -50,7 +49,7 @@ export const createSchedule = async (req, res) => {
     
     try {
         const result = await pool.query(query, values);
-        await logAuditEvent('INFO', `New schedule created: "${result.rows[0].title}"`, { schedule: result.rows[0] });
+        await logAuditEvent('INFO', `New schedule created: "${result.rows[0].title}"`, { schedule: result.rows[0] }, req.user);
         res.status(201).json(result.rows[0]);
     } catch (err) {
         console.error('Create schedule error:', err);
@@ -64,7 +63,6 @@ export const createSchedule = async (req, res) => {
  * @access Private
  */
 export const updateSchedule = async (req, res) => {
-    const { logAuditEvent } = req;
     const { id } = req.params;
     const { title, owner_name, description, category, frequency, frequency_interval, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date, end_date } = req.body;
     
@@ -89,7 +87,7 @@ export const updateSchedule = async (req, res) => {
         const values = [title, owner_name, description, category || 'Uncategorized', frequency, frequency_interval || 1, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date || null, end_date || null, id];
         const result = await pool.query(query, values);
         
-        await logAuditEvent('INFO', `Schedule updated: "${result.rows[0].title}"`, { before: beforeResult.rows[0], after: result.rows[0] });
+        await logAuditEvent('INFO', `Schedule updated: "${result.rows[0].title}"`, { before: beforeResult.rows[0], after: result.rows[0] }, req.user);
         res.status(200).json(result.rows[0]);
     } catch (err) {
         console.error('Update schedule error:', err);
@@ -103,7 +101,6 @@ export const updateSchedule = async (req, res) => {
  * @access Private
  */
 export const deleteSchedule = async (req, res) => {
-    const { logAuditEvent } = req;
     const { id } = req.params;
     try {
         const beforeResult = await pool.query('SELECT * FROM schedules WHERE id = $1', [id]);
@@ -112,7 +109,7 @@ export const deleteSchedule = async (req, res) => {
         }
         
         await pool.query('DELETE FROM schedules WHERE id = $1;', [id]);
-        await logAuditEvent('INFO', `Schedule deleted: "${beforeResult.rows[0].title}"`, { deletedSchedule: beforeResult.rows[0] });
+        await logAuditEvent('INFO', `Schedule deleted: "${beforeResult.rows[0].title}"`, { deletedSchedule: beforeResult.rows[0] }, req.user);
         res.status(204).send();
     } catch (err) {
         console.error('Delete schedule error:', err);
@@ -126,7 +123,7 @@ export const deleteSchedule = async (req, res) => {
  * @access Private
  */
 export const triggerSchedule = async (req, res) => {
-    const { logAuditEvent, appSettings } = req;
+    const { appSettings } = req;
     const { id } = req.params;
     try {
         const { rows } = await pool.query('SELECT * FROM schedules WHERE id = $1', [id]);
@@ -137,16 +134,22 @@ export const triggerSchedule = async (req, res) => {
         const schedule = rows[0];
         const nextDueDate = calculateNextDueDate(schedule);
         
-        const newCard = await trelloService.createTrelloCard(schedule, nextDueDate, appSettings, logAuditEvent);
+        const newCard = await trelloService.createTrelloCard(schedule, nextDueDate, appSettings);
         
         if (newCard) {
+            await logAuditEvent('INFO', `Manual card creation successful: "${newCard.name}"`, { schedule, newCard, dueDate: nextDueDate }, req.user);
             await pool.query('UPDATE schedules SET active_card_id = $1, last_card_created_at = NOW(), needs_new_card = FALSE WHERE id = $2', [newCard.id, schedule.id]);
             res.status(201).json(newCard);
         } else {
             res.status(500).json({ error: 'Failed to create Trello card.' });
         }
     } catch (error) {
-        await logAuditEvent('ERROR', `Manual trigger failed for schedule ${id}.`, { error: String(error) });
+        const errorDetails = {
+            scheduleId: id,
+            statusCode: error.response?.status,
+            response: error.response?.data || error.message,
+        };
+        await logAuditEvent('ERROR', `Manual trigger failed for schedule ${id}.`, errorDetails, req.user);
         res.status(500).json({ error: 'Internal server error.' });
     }
 };

@@ -53,6 +53,7 @@ export const calculateNextDueDate = (schedule) => {
  */
 const runScheduler = async (appSettings) => {
     const runId = Math.random().toString(36).substring(2, 8);
+    // Use the imported logger directly. Since this is a system process, there is no user.
     await logAuditEvent('INFO', 'Scheduler starting evaluation run.', { runId });
     const startTime = Date.now();
     
@@ -83,12 +84,10 @@ const runScheduler = async (appSettings) => {
                 try {
                     const newCard = await trelloService.createTrelloCard(schedule, nextDueDate, appSettings);
                     if (newCard) {
-                        // Log successful creation here, where we have the runId
                         await logAuditEvent('INFO', `Card creation successful: "${newCard.name}"`, { schedule, newCard, dueDate: nextDueDate, runId });
                         await pool.query('UPDATE schedules SET active_card_id = $1, last_card_created_at = NOW(), needs_new_card = FALSE WHERE id = $2', [newCard.id, schedule.id]);
                     }
                 } catch (error) {
-                    // This now catches errors thrown by the service and logs them.
                     const errorDetails = {
                         schedule,
                         statusCode: error.response?.status,
