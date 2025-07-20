@@ -1,7 +1,12 @@
 import pool from '../db.js';
+import logAuditEvent from '../utils/logger.js';
 
+/**
+ * @description Gets the current application settings, masking sensitive values.
+ * @param {object} req - The Express request object.
+ * @param {object} res - The Express response object.
+ */
 export const getSettings = (req, res) => {
-    // Get appSettings from the request object
     const { appSettings } = req; 
     
     const responseSettings = { ...appSettings };
@@ -15,9 +20,13 @@ export const getSettings = (req, res) => {
     res.json(responseSettings);
 };
 
+/**
+ * @description Updates the general application settings.
+ * @param {object} req - The Express request object.
+ * @param {object} res - The Express response object.
+ */
 export const updateSettings = async (req, res) => {
-    // Get everything needed from the request object
-    const { appSettings, loadSettings, reinitializeCronJob, logAuditEvent } = req;
+    const { appSettings, loadSettings, reinitializeCronJob } = req;
     
     const { TRELLO_BOARD_ID, TRELLO_TO_DO_LIST_ID, TRELLO_DONE_LIST_ID, TRELLO_LABEL_ID, CRON_SCHEDULE } = req.body;
     const newSettings = { TRELLO_BOARD_ID, TRELLO_TO_DO_LIST_ID, TRELLO_DONE_LIST_ID, TRELLO_LABEL_ID, CRON_SCHEDULE };
@@ -34,19 +43,25 @@ export const updateSettings = async (req, res) => {
         
         await loadSettings();
         reinitializeCronJob();
-
+        
+        await logAuditEvent('INFO', 'Application settings updated.', { updatedSettings: Object.keys(newSettings) }, req.user);
         res.status(200).json({ message: 'Settings updated successfully.' });
     } catch (error) {
         await client.query('ROLLBACK');
-        await logAuditEvent('ERROR', 'Failed to update settings.', { error: String(error) });
+        await logAuditEvent('ERROR', 'Failed to update settings.', { error: String(error) }, req.user);
         res.status(500).json({ error: 'Failed to update settings.' });
     } finally {
         client.release();
     }
 };
 
+/**
+ * @description Updates the sensitive Trello API credentials.
+ * @param {object} req - The Express request object.
+ * @param {object} res - The Express response object.
+ */
 export const updateCredentials = async (req, res) => {
-    const { loadSettings, logAuditEvent } = req;
+    const { loadSettings } = req;
     
     const { TRELLO_API_KEY, TRELLO_API_TOKEN } = req.body;
     if (!TRELLO_API_KEY || !TRELLO_API_TOKEN) {
@@ -62,10 +77,11 @@ export const updateCredentials = async (req, res) => {
 
         await loadSettings();
 
+        await logAuditEvent('INFO', 'Trello API credentials updated.', {}, req.user);
         res.status(200).json({ message: 'Credentials saved successfully.' });
     } catch (error) {
         await client.query('ROLLBACK');
-        await logAuditEvent('ERROR', 'Failed to save credentials.', { error: String(error) });
+        await logAuditEvent('ERROR', 'Failed to save credentials.', { error: String(error) }, req.user);
         res.status(500).json({ error: 'Failed to save credentials.' });
     } finally {
         client.release();

@@ -1,26 +1,30 @@
 import pool from '../db.js';
+import logAuditEvent from '../utils/logger.js';
 
 /**
  * @description Fetches the 100 most recent audit log entries.
+ * @param {object} req - The Express request object.
+ * @param {object} res - The Express response object.
  */
 export const getAuditLogs = async (req, res) => {
-    // The logAuditEvent function is attached to the request by our middleware
-    const { logAuditEvent } = req; 
     try {
         const result = await pool.query('SELECT * FROM audit_logs ORDER BY timestamp DESC LIMIT 100');
         res.status(200).json(result.rows);
     } catch (err) {
-        await logAuditEvent('ERROR', 'Failed to fetch audit logs.', { error: String(err) });
+        // Use the imported logger, passing req.user
+        await logAuditEvent('ERROR', 'Failed to fetch audit logs.', { error: String(err) }, req.user);
         res.status(500).json({ error: 'Internal server error' });
     }
 };
 
 /**
  * @description Fetches the current status of the cron scheduler.
+ * @param {object} req - The Express request object.
+ * @param {object} res - The Express response object.
  */
 export const getSchedulerStatus = async (req, res) => {
-    // cronJob and logAuditEvent are attached by middleware
-    const { cronJob, logAuditEvent } = req;
+    // cronJob is attached to the request by our middleware
+    const { cronJob } = req;
 
     if (!cronJob) {
         return res.status(500).json({ error: "Scheduler not initialized." });
@@ -43,7 +47,8 @@ export const getSchedulerStatus = async (req, res) => {
             nextRun: cronJob.nextDate().toISO()
         });
     } catch (error) {
-        await logAuditEvent('ERROR', 'Failed to fetch scheduler status.', { error: String(error) });
+        // Use the imported logger, passing req.user
+        await logAuditEvent('ERROR', 'Failed to fetch scheduler status.', { error: String(error) }, req.user);
         res.status(500).json({ error: 'Failed to fetch scheduler status.' });
     }
 };

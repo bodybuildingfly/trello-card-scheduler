@@ -1,7 +1,9 @@
 import { CronJob } from 'cron';
 import pool from '../db.js';
 import * as trelloService from './trelloService.js';
+import logAuditEvent from '../utils/logger.js';
 
+// The cronJob instance is now managed entirely within this service.
 let cronJob;
 
 /**
@@ -48,9 +50,8 @@ export const calculateNextDueDate = (schedule) => {
 /**
  * @description The main logic that runs on a schedule to check for and create Trello cards.
  * @param {object} appSettings - The current application settings.
- * @param {function} logAuditEvent - The audit logging function.
  */
-const runScheduler = async (appSettings, logAuditEvent) => {
+const runScheduler = async (appSettings) => {
     const runId = Math.random().toString(36).substring(2, 8);
     await logAuditEvent('INFO', 'Scheduler starting evaluation run.', { runId });
     const startTime = Date.now();
@@ -80,12 +81,21 @@ const runScheduler = async (appSettings, logAuditEvent) => {
                     continue;
                 }
                 try {
-                    const newCard = await trelloService.createTrelloCard(schedule, nextDueDate, appSettings, logAuditEvent, runId);
+                    const newCard = await trelloService.createTrelloCard(schedule, nextDueDate, appSettings);
                     if (newCard) {
+                        // Log successful creation here, where we have the runId
+                        await logAuditEvent('INFO', `Card creation successful: "${newCard.name}"`, { schedule, newCard, dueDate: nextDueDate, runId });
                         await pool.query('UPDATE schedules SET active_card_id = $1, last_card_created_at = NOW(), needs_new_card = FALSE WHERE id = $2', [newCard.id, schedule.id]);
                     }
                 } catch (error) {
-                    console.error(`Error during card creation for schedule ${schedule.id}:`, error);
+                    // This now catches errors thrown by the service and logs them.
+                    const errorDetails = {
+                        schedule,
+                        statusCode: error.response?.status,
+                        response: error.response?.data || error.message,
+                        runId
+                    };
+                    await logAuditEvent('ERROR', 'Card creation failed: Trello API error.', errorDetails);
                 }
             }
         }
@@ -100,9 +110,8 @@ const runScheduler = async (appSettings, logAuditEvent) => {
 /**
  * @description Initializes or re-initializes the cron job with the current settings.
  * @param {object} appSettings - The current application settings.
- * @param {function} logAuditEvent - The audit logging function.
  */
-export const reinitializeCronJob = (appSettings, logAuditEvent) => {
+export const reinitializeCronJob = (appSettings) => {
     if (cronJob) {
         cronJob.stop();
     }
@@ -119,7 +128,7 @@ export const reinitializeCronJob = (appSettings, logAuditEvent) => {
     try {
         cronJob = new CronJob(
             cronPattern,
-            () => runScheduler(appSettings, logAuditEvent),
+            () => runScheduler(appSettings),
             null,
             true,
             timeZone
