@@ -71,26 +71,15 @@ To run the application, you must provide the following environment variables to 
 docker run -d
 
 -p 5000:5000
-
 --name trello-card-scheduler
-
 -e DB_HOST=your_database_host
-
 -e DB_USER=your_db_user
-
 -e DB_PASSWORD=your_db_password
-
 -e DB_NAME=trelloScheduler
-
 -e DB_PORT=5432
-
 -e JWT_SECRET=your_super_secret_random_string
-
 -e ADMIN_USERNAME=admin
-
 -e ADMIN_PASSWORD=your_secure_admin_password
-
 -e TZ="America/New_York"
-
 trello-card-scheduler
 ```
