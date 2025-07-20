@@ -115,7 +115,7 @@ const ScheduleForm = ({
     }, [initialData]);
 
     const handleInputChange = (e) => {
-        const { name, value, type, checked } = e.target;
+        const { name, value, checked } = e.target;
         
         if (name === 'weekly_day') {
             const currentDays = formData.frequency_details ? formData.frequency_details.split(',') : [];

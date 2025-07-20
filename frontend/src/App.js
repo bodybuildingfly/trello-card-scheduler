@@ -42,6 +42,7 @@ function App() {
     const [trelloMembers, setTrelloMembers] = useState([]);
     const [trelloLabels, setTrelloLabels] = useState([]);
     const [categories, setCategories] = useState([]);
+    const [appVersion, setAppVersion] = useState('');
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
     const [activeView, setActiveView] = useState('welcome');
@@ -65,6 +66,12 @@ function App() {
     const { isAuthenticated, user, logout, isAdmin } = useAuth();
 
     // --- Data Fetching and Lifecycle ---
+    useEffect(() => {
+        apiClient.get('/api/version')
+            .then(res => setAppVersion(res.data.version))
+            .catch(err => console.error("Could not fetch app version", err));
+    }, []);
+
     const fetchSchedules = useCallback(async () => {
         try {
             const res = await apiClient.get('/api/schedules');
@@ -83,18 +90,6 @@ function App() {
             console.error("Categories Fetch Error:", err);
         }
     }, []);
-
-    const checkTrelloConfig = useCallback(async () => {
-        try {
-            const res = await apiClient.get('/api/settings');
-            const configured = res.data.isConfigured;
-            setIsTrelloConfigured(configured);
-            return configured;
-        } catch {
-            setIsTrelloConfigured(false);
-            return false;
-        }
-    }, [setIsTrelloConfigured]);
 
     const loadInitialData = useCallback(async () => {
         setIsLoading(true);
@@ -152,8 +147,16 @@ function App() {
         setError(null);
         if (hideForm) {
             setActiveView('welcome');
-            setExpandedItemId(null); // Collapse any expanded item when form is cancelled
+            setExpandedItemId(null);
         }
+    };
+
+    const handleItemSelect = (schedule) => {
+        setIsEditing(true);
+        setSelectedScheduleId(schedule.id);
+        setFormData({ ...schedule, trigger_hour: schedule.trigger_hour || '09', trigger_minute: schedule.trigger_minute || '00', trigger_ampm: schedule.trigger_ampm || 'am' });
+        setActiveView('form');
+        setExpandedItemId(prevId => (prevId === schedule.id ? null : schedule.id));
     };
     
     const handleDeleteClick = (schedule) => {
@@ -197,19 +200,6 @@ function App() {
         }
     };
 
-   /**
-     * @description Handles the selection of a schedule item from the list.
-     * It opens the edit form and expands the selected item.
-     * @param {object} schedule - The schedule object that was clicked.
-     */
-    const handleItemSelect = (schedule) => {
-        setIsEditing(true);
-        setSelectedScheduleId(schedule.id);
-        setFormData({ ...schedule, trigger_hour: schedule.trigger_hour || '09', trigger_minute: schedule.trigger_minute || '00', trigger_ampm: schedule.trigger_ampm || 'am' });
-        setActiveView('form');
-        setExpandedItemId(prevId => (prevId === schedule.id ? null : schedule.id));
-    };
-
     return (
         <ProtectedRoute>
             <div className="h-screen w-screen bg-slate-100 font-sans text-slate-800 grid grid-cols-12">
@@ -225,7 +215,16 @@ function App() {
                 <aside className="col-span-4 bg-white p-6 flex flex-col border-r border-slate-200">
                     <div className="text-center mb-6">
                         <h1 className="text-2xl font-bold text-slate-900">Trello Scheduler</h1>
-                        <p className="text-xs text-slate-400 mt-1">Version {process.env.REACT_APP_VERSION}</p>
+                        {appVersion && (
+                            <a 
+                                href="https://github.com/bodybuildingfly/trello-card-scheduler" 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-xs text-slate-400 mt-1 hover:text-sky-600 hover:underline"
+                            >
+                                Version {appVersion}
+                            </a>
+                        )}
                     </div>
 
                     <div className="mb-6">
@@ -257,18 +256,18 @@ function App() {
                         {isAdmin && (
                             <nav className="space-y-2 mb-4">
                                 <p className="px-3 text-xs font-semibold uppercase text-slate-400">Admin</p>
-                                <a href="#" onClick={(e) => { e.preventDefault(); setActiveView('dashboard'); }} className={`flex items-center px-3 py-2 text-slate-600 hover:bg-slate-100 rounded-md ${activeView === 'dashboard' && 'bg-slate-100 font-bold'}`}>
+                                <button onClick={() => setActiveView('dashboard')} className={`w-full flex items-center px-3 py-2 text-slate-600 hover:bg-slate-100 rounded-md ${activeView === 'dashboard' && 'bg-slate-100 font-bold'}`}>
                                     <DashboardIcon /> <span className="ml-3">Dashboard</span>
-                                </a>
-                                <a href="#" onClick={(e) => { e.preventDefault(); setActiveView('settings'); }} className={`flex items-center px-3 py-2 text-slate-600 hover:bg-slate-100 rounded-md ${activeView === 'settings' && 'bg-slate-100 font-bold'}`}>
+                                </button>
+                                <button onClick={() => setActiveView('settings')} className={`w-full flex items-center px-3 py-2 text-slate-600 hover:bg-slate-100 rounded-md ${activeView === 'settings' && 'bg-slate-100 font-bold'}`}>
                                     <SettingsIcon /> <span className="ml-3">Settings</span>
-                                </a>
-                                <a href="#" onClick={(e) => { e.preventDefault(); setActiveView('audit'); }} className={`flex items-center px-3 py-2 text-slate-600 hover:bg-slate-100 rounded-md ${activeView === 'audit' && 'bg-slate-100 font-bold'}`}>
+                                </button>
+                                <button onClick={() => setActiveView('audit')} className={`w-full flex items-center px-3 py-2 text-slate-600 hover:bg-slate-100 rounded-md ${activeView === 'audit' && 'bg-slate-100 font-bold'}`}>
                                     <AuditLogIcon /> <span className="ml-3">Audit Log</span>
-                                </a>
-                                <a href="#" onClick={(e) => { e.preventDefault(); setActiveView('users'); }} className={`flex items-center px-3 py-2 text-slate-600 hover:bg-slate-100 rounded-md ${activeView === 'users' && 'bg-slate-100 font-bold'}`}>
+                                </button>
+                                <button onClick={() => setActiveView('users')} className={`w-full flex items-center px-3 py-2 text-slate-600 hover:bg-slate-100 rounded-md ${activeView === 'users' && 'bg-slate-100 font-bold'}`}>
                                     <UsersIcon /> <span className="ml-3">User Management</span>
-                                </a>
+                                </button>
                             </nav>
                         )}
                         <div className="text-center">
@@ -280,6 +279,12 @@ function App() {
 
                 {/* --- Main Content Area --- */}
                 <main className="col-span-8 p-8 overflow-y-auto">
+                    {error && (
+                        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-lg mb-6" role="alert">
+                            <p className="font-bold">An Error Occurred</p>
+                            <p>{error}</p>
+                        </div>
+                    )}
                     {!isTrelloConfigured && <TrelloConfigBanner onGoToSettings={() => setActiveView('settings')} />}
                     <SchedulerStatus key={statusKey} isConfigured={isTrelloConfigured} onStatusUpdate={() => setStatusKey(prev => prev + 1)} />
                     

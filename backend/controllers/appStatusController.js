@@ -1,5 +1,29 @@
 import pool from '../db.js';
 import logAuditEvent from '../utils/logger.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// Helper to get __dirname in ES Modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+/**
+ * @description Gets the application version from the backend's package.json file.
+ * @route GET /api/version
+ * @access Public
+ */
+export const getAppVersion = (req, res) => {
+    try {
+        // Navigate up two directories from controllers/ to the backend/ root
+        const packageJsonPath = path.resolve(__dirname, '../../package.json');
+        const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+        res.json({ version: packageJson.version });
+    } catch (error) {
+        console.error('Failed to read package.json version:', error);
+        res.status(500).json({ message: 'Could not retrieve application version.' });
+    }
+};
 
 /**
  * @description Fetches the 100 most recent audit log entries.
@@ -11,7 +35,6 @@ export const getAuditLogs = async (req, res) => {
         const result = await pool.query('SELECT * FROM audit_logs ORDER BY timestamp DESC LIMIT 100');
         res.status(200).json(result.rows);
     } catch (err) {
-        // Use the imported logger, passing req.user
         await logAuditEvent('ERROR', 'Failed to fetch audit logs.', { error: String(err) }, req.user);
         res.status(500).json({ error: 'Internal server error' });
     }
@@ -23,7 +46,6 @@ export const getAuditLogs = async (req, res) => {
  * @param {object} res - The Express response object.
  */
 export const getSchedulerStatus = async (req, res) => {
-    // cronJob is attached to the request by our middleware
     const { cronJob } = req;
 
     if (!cronJob) {
@@ -47,7 +69,6 @@ export const getSchedulerStatus = async (req, res) => {
             nextRun: cronJob.nextDate().toISO()
         });
     } catch (error) {
-        // Use the imported logger, passing req.user
         await logAuditEvent('ERROR', 'Failed to fetch scheduler status.', { error: String(error) }, req.user);
         res.status(500).json({ error: 'Failed to fetch scheduler status.' });
     }
