@@ -69,7 +69,6 @@ To run the application, you must provide the following environment variables to 
 
 ```
 docker run -d
-
 -p 5000:5000
 --name trello-card-scheduler
 -e DB_HOST=your_database_host
