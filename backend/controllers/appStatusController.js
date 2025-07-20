@@ -15,8 +15,9 @@ const __dirname = path.dirname(__filename);
  */
 export const getAppVersion = (req, res) => {
     try {
-        // Navigate up two directories from controllers/ to the backend/ root
-        const packageJsonPath = path.resolve(__dirname, '../../package.json');
+        // Correct the path to point to the backend's package.json file.
+        // It navigates up from /controllers to the /backend directory.
+        const packageJsonPath = path.resolve(__dirname, '../package.json');
         const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
         res.json({ version: packageJson.version });
     } catch (error) {
