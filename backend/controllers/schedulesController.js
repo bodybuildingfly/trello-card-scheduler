@@ -36,7 +36,6 @@ export const getAllSchedules = async (req, res) => {
 export const getUniqueCategories = async (req, res) => {
     try {
         const result = await pool.query("SELECT DISTINCT category FROM schedules WHERE category IS NOT NULL AND category <> '' ORDER BY category ASC");
-        // The result is an array of objects, so we map it to a simple array of strings.
         const categories = result.rows.map(row => row.category);
         res.status(200).json(categories);
     } catch (err) {
@@ -149,6 +148,12 @@ export const triggerSchedule = async (req, res) => {
         }
         
         const schedule = rows[0];
+
+        if (req.user.role !== 'admin' && req.user.username !== schedule.owner_name) {
+            await logAuditEvent('ERROR', `Unauthorized attempt to trigger schedule by user '${req.user.username}'.`, { scheduleId: id, owner: schedule.owner_name }, req.user);
+            return res.status(403).json({ error: 'You are not authorized to trigger this schedule.' });
+        }
+        
         const nextDueDate = calculateNextDueDate(schedule);
         
         const newCard = await trelloService.createTrelloCard(schedule, nextDueDate, appSettings);
@@ -158,7 +163,7 @@ export const triggerSchedule = async (req, res) => {
             await pool.query('UPDATE schedules SET active_card_id = $1, last_card_created_at = NOW(), needs_new_card = FALSE WHERE id = $2', [newCard.id, schedule.id]);
             res.status(201).json(newCard);
         } else {
-            res.status(500).json({ error: 'Failed to create Trello card.' });
+            return res.status(400).json({ error: 'Failed to create Trello card. This may be due to a configuration issue (e.g., missing Trello member).' });
         }
     } catch (error) {
         const errorDetails = {
