@@ -2,6 +2,24 @@ import pool from '../db.js';
 import * as trelloService from '../services/trelloService.js';
 import { calculateNextDueDate } from '../services/schedulerService.js';
 import logAuditEvent from '../utils/logger.js';
+import { z } from 'zod';
+
+// --- Validation Schemas ---
+const scheduleSchema = z.object({
+    title: z.string().min(1, { message: "Title is required." }),
+    owner_name: z.string().min(1, { message: "Owner is required." }),
+    description: z.string().optional(),
+    category: z.string().optional(),
+    frequency: z.enum(['once', 'daily', 'weekly', 'monthly', 'yearly']),
+    frequency_interval: z.number().int().positive().optional(),
+    frequency_details: z.string().optional(),
+    trigger_hour: z.string().optional(),
+    trigger_minute: z.string().optional(),
+    trigger_ampm: z.string().optional(),
+    start_date: z.string().nullable().optional(),
+    end_date: z.string().nullable().optional(),
+    trello_label_id: z.string().nullable().optional(),
+});
 
 /**
  * @description Gets all schedules, grouped by category.
@@ -45,17 +63,18 @@ export const getUniqueCategories = async (req, res) => {
 };
 
 /**
- * @description Creates a new schedule.
+ * @description Creates a new schedule after validating input.
  * @route POST /api/schedules
  * @access Private
  */
 export const createSchedule = async (req, res) => {
-    const { title, owner_name, description, category, frequency, frequency_interval, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date, end_date, trello_label_id } = req.body;
-    
-    if (!title || !owner_name) {
-        return res.status(400).json({ error: 'Title and Owner are required.' });
+    const validationResult = scheduleSchema.safeParse(req.body);
+    if (!validationResult.success) {
+        return res.status(400).json({ message: "Invalid input.", errors: validationResult.error.issues });
     }
 
+    const { title, owner_name, description, category, frequency, frequency_interval, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date, end_date, trello_label_id } = validationResult.data;
+    
     const query = `
         INSERT INTO schedules (title, owner_name, description, category, frequency, frequency_interval, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date, end_date, trello_label_id) 
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) 
@@ -74,17 +93,18 @@ export const createSchedule = async (req, res) => {
 };
 
 /**
- * @description Updates an existing schedule.
+ * @description Updates an existing schedule after validating input.
  * @route PUT /api/schedules/:id
  * @access Private
  */
 export const updateSchedule = async (req, res) => {
-    const { id } = req.params;
-    const { title, owner_name, description, category, frequency, frequency_interval, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date, end_date, trello_label_id } = req.body;
-    
-    if (!title || !owner_name) {
-        return res.status(400).json({ error: 'Title and Owner are required.' });
+    const validationResult = scheduleSchema.safeParse(req.body);
+    if (!validationResult.success) {
+        return res.status(400).json({ message: "Invalid input.", errors: validationResult.error.issues });
     }
+
+    const { id } = req.params;
+    const { title, owner_name, description, category, frequency, frequency_interval, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date, end_date, trello_label_id } = validationResult.data;
     
     try {
         const beforeResult = await pool.query('SELECT * FROM schedules WHERE id = $1', [id]);
@@ -148,7 +168,14 @@ export const triggerSchedule = async (req, res) => {
         }
         
         const schedule = rows[0];
+
+        if (req.user.role !== 'admin' && req.user.username !== schedule.owner_name) {
+            await logAuditEvent('ERROR', `Unauthorized attempt to trigger schedule by user '${req.user.username}'.`, { scheduleId: id, owner: schedule.owner_name }, req.user);
+            return res.status(403).json({ error: 'You are not authorized to trigger this schedule.' });
+        }
+        
         const nextDueDate = calculateNextDueDate(schedule);
+        
         const newCard = await trelloService.createTrelloCard(schedule, nextDueDate, appSettings);
         
         if (newCard) {

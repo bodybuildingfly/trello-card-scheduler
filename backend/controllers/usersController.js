@@ -1,19 +1,33 @@
 import bcrypt from 'bcryptjs';
 import pool from '../db.js';
 import logAuditEvent from '../utils/logger.js';
-import crypto from 'crypto'; // Import the crypto library for generating random passwords
+import crypto from 'crypto';
+import { z } from 'zod'; // Import zod
+
+// --- Validation Schemas ---
+// Define a schema for creating a new user.
+const createUserSchema = z.object({
+    username: z.string().min(3, { message: "Username must be at least 3 characters long." }),
+    password: z.string().min(8, { message: "Password must be at least 8 characters long." }),
+    role: z.enum(['user', 'admin']).optional(), // Role is optional, defaults to 'user'
+});
+
 
 /**
- * @description Creates a new user.
+ * @description Creates a new user after validating the input.
  * @route POST /api/users
  * @access Private/Admin
  */
 export const createUser = async (req, res) => {
-    const { username, password, role } = req.body;
+    // Validate the request body against the schema
+    const validationResult = createUserSchema.safeParse(req.body);
 
-    if (!username || !password) {
-        return res.status(400).json({ message: 'Please provide a username and password.' });
+    if (!validationResult.success) {
+        // If validation fails, return a 400 error with the details
+        return res.status(400).json({ message: "Invalid input.", errors: validationResult.error.issues });
     }
+
+    const { username, password, role } = validationResult.data;
 
     try {
         const { rows: existingUsers } = await pool.query('SELECT id FROM users WHERE username = $1', [username]);
@@ -87,13 +101,11 @@ export const deleteUser = async (req, res) => {
 export const resetPassword = async (req, res) => {
     const { id } = req.params;
 
-    // Prevent admin from resetting their own password through this endpoint for safety.
     if (parseInt(id, 10) === req.user.id) {
         return res.status(400).json({ message: 'Admin cannot reset their own password here.' });
     }
 
     try {
-        // Generate a secure, random temporary password.
         const tempPassword = crypto.randomBytes(8).toString('hex');
         
         const salt = await bcrypt.genSalt(10);
@@ -111,7 +123,6 @@ export const resetPassword = async (req, res) => {
         const targetUsername = rows[0].username;
         await logAuditEvent('INFO', `Password reset for user: '${targetUsername}'`, { targetUser: targetUsername }, req.user);
 
-        // Return the temporary password to the admin so they can provide it to the user.
         res.json({ message: `Password for ${targetUsername} has been reset.`, temporaryPassword: tempPassword });
 
     } catch (error) {

@@ -3,47 +3,82 @@ import pool from '../db.js';
 import * as trelloService from './trelloService.js';
 import logAuditEvent from '../utils/logger.js';
 
-// The cronJob instance is now managed entirely within this service.
 let cronJob;
 
 /**
- * @description Calculates the next due date for a given schedule.
+ * @description Calculates the next valid future due date for a given schedule, based on the current time.
  * @param {object} schedule - The schedule object from the database.
  * @returns {Date} The next due date.
  */
 export const calculateNextDueDate = (schedule) => {
-    const { frequency, frequency_interval, frequency_details, last_card_created_at, start_date, trigger_hour, trigger_minute, trigger_ampm } = schedule;
-    const baseDate = last_card_created_at ? new Date(Math.max(new Date(last_card_created_at), new Date(start_date || 0))) : new Date(start_date || Date.now());
-    let nextDate = new Date(baseDate);
+    const { frequency, frequency_interval, frequency_details, trigger_hour, trigger_minute, trigger_ampm } = schedule;
+    
+    // The calculation is now always based on the current time.
+    const now = new Date();
+    let nextDate = new Date(); // Start with today
+
     const interval = frequency_interval || 1;
     let hour = parseInt(trigger_hour, 10) || 9;
     if (trigger_ampm === 'pm' && hour !== 12) hour += 12;
     if (trigger_ampm === 'am' && hour === 12) hour = 0;
+    
+    // Set the target time for the calculated date
     nextDate.setHours(hour, parseInt(trigger_minute, 10) || 0, 0, 0);
 
-    switch (frequency) {
-        case 'daily':
-            nextDate.setDate(nextDate.getDate() + interval);
-            break;
-        case 'weekly':
-            const scheduledDays = (frequency_details || '').split(',').map(d => parseInt(d, 10));
-            nextDate.setDate(baseDate.getDate() + 1);
-            let lookahead = 0;
-            while (!scheduledDays.includes(nextDate.getDay()) && lookahead < 14) {
-                nextDate.setDate(nextDate.getDate() + 1);
-                lookahead++;
-            }
-            break;
-        case 'monthly':
-            nextDate.setMonth(baseDate.getMonth() + interval, parseInt(frequency_details, 10) || 1);
-            break;
-        case 'yearly':
-            const [month, day] = (frequency_details || '1-1').split('-').map(d => parseInt(d, 10));
-            nextDate.setFullYear(baseDate.getFullYear() + interval, month - 1, day);
-            break;
-        default:
-            return new Date();
+    // --- LOGIC FOR FINDING THE NEXT DATE ---
+    const advanceDate = () => {
+        switch (frequency) {
+            case 'daily':
+                nextDate.setDate(nextDate.getDate() + interval);
+                break;
+            case 'weekly':
+                const scheduledDays = (frequency_details || '').split(',').map(d => parseInt(d, 10));
+                if (scheduledDays.length > 0) {
+                    // Find the next valid day of the week from the current date
+                    let currentDay = nextDate.getDay();
+                    let daysToAdd = 1; // Start looking from tomorrow
+                    while (daysToAdd <= 7) {
+                        let nextDayIndex = (currentDay + daysToAdd) % 7;
+                        if (scheduledDays.includes(nextDayIndex)) {
+                            nextDate.setDate(nextDate.getDate() + daysToAdd);
+                            return; // Exit after finding the next valid day
+                        }
+                        daysToAdd++;
+                    }
+                }
+                // If no specific days or no valid day found in the next week, advance by the interval
+                nextDate.setDate(nextDate.getDate() + (7 * interval));
+                break;
+            case 'monthly':
+                // If the target day has already passed this month, advance to the next month.
+                if (now.getDate() > parseInt(frequency_details, 10)) {
+                    nextDate.setMonth(nextDate.getMonth() + interval);
+                }
+                nextDate.setDate(parseInt(frequency_details, 10) || 1);
+                break;
+            case 'yearly':
+                const [month, day] = (frequency_details || '1-1').split('-').map(d => parseInt(d, 10));
+                nextDate.setMonth(month - 1, day);
+                // If the date has already passed this year, advance to the next year.
+                if (nextDate < now) {
+                    nextDate.setFullYear(nextDate.getFullYear() + interval);
+                }
+                break;
+            default:
+                nextDate = new Date(); // Fallback for 'once'
+                break;
+        }
+    };
+
+    // --- SAFETY NET ---
+    // If the calculated date for today is already in the past (e.g., it's 10 AM and the schedule was for 9 AM),
+    // this loop will advance the date to the next valid interval.
+    let safetyCounter = 0;
+    while (nextDate <= now && safetyCounter < 1000) {
+        advanceDate();
+        safetyCounter++;
     }
+
     return nextDate;
 };
 
@@ -53,7 +88,6 @@ export const calculateNextDueDate = (schedule) => {
  */
 const runScheduler = async (appSettings) => {
     const runId = Math.random().toString(36).substring(2, 8);
-    // Use the imported logger directly. Since this is a system process, there is no user.
     await logAuditEvent('INFO', 'Scheduler starting evaluation run.', { runId });
     const startTime = Date.now();
     

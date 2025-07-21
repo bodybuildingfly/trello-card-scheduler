@@ -11,9 +11,6 @@ const KeyIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height=
 /**
  * @description A modal component to display the new temporary password to the admin.
  * @param {object} props - The component props.
- * @param {string} props.username - The username of the user whose password was reset.
- * @param {string} props.tempPassword - The new temporary password.
- * @param {function} props.onClose - The function to call when the modal is closed.
  */
 const PasswordResetModal = ({ username, tempPassword, onClose }) => (
     <div className="fixed inset-0 bg-slate-900 bg-opacity-60 backdrop-blur-sm flex justify-center items-center z-50">
@@ -90,7 +87,13 @@ const UserManagementPage = () => {
             setNewRole('user');
             fetchUsers();
         } catch (err) {
-            setError(err.response?.data?.message || 'Failed to create user.');
+            // Check for the detailed validation errors array from the backend
+            if (err.response?.data?.errors) {
+                const formattedErrors = err.response.data.errors.map(e => e.message).join(' ');
+                setError(formattedErrors);
+            } else {
+                setError(err.response?.data?.message || 'Failed to create user.');
+            }
         }
     };
 

@@ -15,6 +15,7 @@ import DashboardPage from './components/DashboardPage';
 // --- Service & Context Imports ---
 import apiClient from './api';
 import { useAuth } from './context/AuthContext';
+import { useSchedules } from './context/SchedulesContext';
 
 // --- Helper Icon Imports ---
 const PlusIcon = () => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
@@ -34,19 +35,25 @@ const WelcomeScreen = () => (
 );
 
 /**
- * @description The main application component.
+ * @description The main application component, acting primarily as a layout and view manager.
  */
 function App() {
     // --- State Management ---
-    const [schedules, setSchedules] = useState({});
-    const [trelloMembers, setTrelloMembers] = useState([]);
-    const [trelloLabels, setTrelloLabels] = useState([]);
-    const [categories, setCategories] = useState([]);
-    const [appVersion, setAppVersion] = useState('');
-    const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState(null);
+    // Core data state is managed by the SchedulesContext
+    const { 
+        schedules, 
+        trelloMembers, 
+        trelloLabels, 
+        categories, 
+        isLoading, 
+        error: dataError, // Rename to avoid conflict with local error state
+        loadAllData 
+    } = useSchedules();
+    
+    // UI-specific state remains in App.js
     const [activeView, setActiveView] = useState('welcome');
     const [expandedItemId, setExpandedItemId] = useState(null);
+    const [formError, setFormError] = useState(null); // Local error state for the form
 
     // Form-related state
     const [isEditing, setIsEditing] = useState(false);
@@ -66,77 +73,39 @@ function App() {
     const { isAuthenticated, user, logout, isAdmin } = useAuth();
 
     // --- Data Fetching and Lifecycle ---
-    useEffect(() => {
-        apiClient.get('/api/version')
-            .then(res => setAppVersion(res.data.version))
-            .catch(err => console.error("Could not fetch app version", err));
-    }, []);
-
-    const fetchSchedules = useCallback(async () => {
-        try {
-            const res = await apiClient.get('/api/schedules');
-            setSchedules(res.data);
-        } catch (err) {
-            console.error("Schedules Fetch Error:", err);
-            setError("Failed to load schedules.");
-        }
-    }, [setError]);
-
-    const fetchCategories = useCallback(async () => {
-        try {
-            const res = await apiClient.get('/api/schedules/categories');
-            setCategories(res.data);
-        } catch (err) {
-            console.error("Categories Fetch Error:", err);
-        }
-    }, []);
-
-    const loadInitialData = useCallback(async () => {
-        setIsLoading(true);
-        setError(null);
-        try {
-            const { data: settings } = await apiClient.get('/api/settings');
-            const configured = settings.isConfigured;
-            setIsTrelloConfigured(configured);
-
-            if (configured) {
-                await Promise.all([
-                    fetchSchedules(),
-                    fetchCategories(),
-                    apiClient.get('/api/trello/members').then(res => setTrelloMembers(res.data)),
-                    apiClient.get(`/api/trello/labels/${settings.TRELLO_BOARD_ID}`).then(res => setTrelloLabels(res.data))
-                ]);
-            } else {
-                await fetchSchedules();
-            }
-        } catch (err) {
-            console.error("Failed to load initial data:", err);
-            setError('Failed to load initial application data.');
-        } finally {
-            setIsLoading(false);
-        }
-    }, [fetchSchedules, fetchCategories, setError, setIsLoading, setTrelloMembers, setIsTrelloConfigured]);
-    
+    // This effect now simply calls the load function from the context.
     useEffect(() => {
         if (isAuthenticated) {
-            loadInitialData();
+            loadAllData();
         }
-    }, [isAuthenticated, loadInitialData]);
+    }, [isAuthenticated, loadAllData]);
+
+    // This effect checks the Trello configuration status from the loaded schedules data.
+    useEffect(() => {
+        const checkConfig = async () => {
+            try {
+                const res = await apiClient.get('/api/settings');
+                setIsTrelloConfigured(res.data.isConfigured);
+            } catch {
+                setIsTrelloConfigured(false);
+            }
+        };
+        if (isAuthenticated) {
+            checkConfig();
+        }
+    }, [isAuthenticated, schedules]); // Re-check when schedules data changes
 
     // --- Event Handlers ---
     const handleFormSubmit = async (submittedFormData) => {
-        setIsLoading(true);
         const method = isEditing ? 'put' : 'post';
         const url = isEditing ? `/api/schedules/${selectedScheduleId}` : '/api/schedules';
         
         try {
           await apiClient[method](url, submittedFormData);
-          await Promise.all([fetchSchedules(), fetchCategories()]);
+          await loadAllData(); // Refresh all data from the context
           resetForm(true);
         } catch (err) {
-          setError(`Failed to ${isEditing ? 'update' : 'add'} schedule.`);
-        } finally {
-            setIsLoading(false);
+          setFormError(`Failed to ${isEditing ? 'update' : 'add'} schedule.`);
         }
     };
 
@@ -144,7 +113,7 @@ function App() {
         setFormData(initialFormState);
         setIsEditing(false);
         setSelectedScheduleId(null);
-        setError(null);
+        setFormError(null);
         if (hideForm) {
             setActiveView('welcome');
             setExpandedItemId(null);
@@ -168,9 +137,9 @@ function App() {
         if (!scheduleToDelete) return;
         try {
             await apiClient.delete(`/api/schedules/${scheduleToDelete.id}`);
-            await Promise.all([fetchSchedules(), fetchCategories()]);
+            await loadAllData();
         } catch (error) {
-            setError("Failed to delete schedule.");
+            setFormError("Failed to delete schedule.");
         } finally {
             setShowDeleteModal(false);
             setScheduleToDelete(null);
@@ -181,10 +150,10 @@ function App() {
         setTriggeringId(scheduleId);
         try {
             await apiClient.post(`/api/schedules/${scheduleId}/trigger`);
-            await fetchSchedules();
+            await loadAllData();
         } catch (error) {
             console.error("Manual trigger failed", error);
-            setError("Manual trigger failed. Check server logs.");
+            setFormError("Manual trigger failed. Check server logs.");
         } finally {
             setTriggeringId(null);
         }
@@ -193,10 +162,10 @@ function App() {
     const handleCloneClick = async (scheduleId) => {
         try {
             await apiClient.post(`/api/schedules/${scheduleId}/clone`);
-            await Promise.all([fetchSchedules(), fetchCategories()]);
+            await loadAllData();
         } catch (error) {
             console.error("Clone failed", error);
-            setError("Failed to clone schedule. Check server logs.");
+            setFormError("Failed to clone schedule. Check server logs.");
         }
     };
 
@@ -215,16 +184,14 @@ function App() {
                 <aside className="col-span-4 bg-white p-6 flex flex-col border-r border-slate-200">
                     <div className="text-center mb-6">
                         <h1 className="text-2xl font-bold text-slate-900">Trello Scheduler</h1>
-                        {appVersion && (
-                            <a 
-                                href="https://github.com/bodybuildingfly/trello-card-scheduler" 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="text-xs text-slate-400 mt-1 hover:text-sky-600 hover:underline"
-                            >
-                                Version {appVersion}
-                            </a>
-                        )}
+                        <a 
+                            href="https://github.com/bodybuildingfly/trello-card-scheduler" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-xs text-slate-400 mt-1 hover:text-sky-600 hover:underline"
+                        >
+                            Version {process.env.REACT_APP_VERSION || 'dev'}
+                        </a>
                     </div>
 
                     <div className="mb-6">
@@ -279,10 +246,10 @@ function App() {
 
                 {/* --- Main Content Area --- */}
                 <main className="col-span-8 p-8 overflow-y-auto">
-                    {error && (
+                    {dataError && (
                         <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-lg mb-6" role="alert">
                             <p className="font-bold">An Error Occurred</p>
-                            <p>{error}</p>
+                            <p>{dataError}</p>
                         </div>
                     )}
                     {!isTrelloConfigured && <TrelloConfigBanner onGoToSettings={() => setActiveView('settings')} />}
@@ -306,7 +273,7 @@ function App() {
                         )}
                         {isAdmin && activeView === 'dashboard' && <DashboardPage />}
                         {isAdmin && activeView === 'audit' && <AuditLogViewer />}
-                        {isAdmin && activeView === 'settings' && <SettingsPage onSettingsSaved={() => { setStatusKey(prev => prev + 1); loadInitialData(); }} />}
+                        {isAdmin && activeView === 'settings' && <SettingsPage onSettingsSaved={() => { setStatusKey(prev => prev + 1); loadAllData(); }} />}
                         {isAdmin && activeView === 'users' && <UserManagementPage />}
                     </div>
                 </main>

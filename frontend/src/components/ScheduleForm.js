@@ -107,12 +107,26 @@ const ScheduleForm = ({
     const [formData, setFormData] = useState(initialData);
     const [showDates, setShowDates] = useState(!!(initialData.start_date || initialData.end_date));
     const [error, setError] = useState('');
+    const [warning, setWarning] = useState(''); // State for non-blocking warnings
     const formRef = useRef(null);
 
     useEffect(() => {
-        setFormData(initialData);
+        let dataToSet = { ...initialData };
+        setWarning(''); // Clear previous warnings
+
+        // Check for orphaned schedules when editing
+        if (isEditing && initialData.owner_name && trelloMembers.length > 0) {
+            const ownerExists = trelloMembers.some(member => member.fullName === initialData.owner_name);
+            if (!ownerExists) {
+                setWarning(`Warning: The previously assigned user "${initialData.owner_name}" is no longer a member of this Trello board. Please select a new assignee.`);
+                // Clear the invalid owner from the form data
+                dataToSet.owner_name = '';
+            }
+        }
+        
+        setFormData(dataToSet);
         setShowDates(!!(initialData.start_date || initialData.end_date));
-    }, [initialData]);
+    }, [initialData, isEditing, trelloMembers]);
 
     const handleInputChange = (e) => {
         const { name, value, checked } = e.target;
@@ -139,11 +153,12 @@ const ScheduleForm = ({
 
     const handleFormSubmit = (e) => {
         e.preventDefault();
+        setError('');
         if (!formData.title || !formData.owner_name) {
             setError('Title and Owner are required fields.');
             return;
         }
-        onSubmit(formData);
+        onSubmit(formData, setError);
     };
 
     const [yearlyMonth, yearlyDay] = (formData.frequency_details || '1-1').split('-');
@@ -152,6 +167,13 @@ const ScheduleForm = ({
         <div ref={formRef} className="bg-white p-6 sm:p-8 rounded-2xl shadow-lg mb-10 max-w-4xl mx-auto">
             <h2 className="text-3xl font-semibold text-slate-800 mb-6 border-b border-slate-200 pb-4">{isEditing ? 'Edit Schedule' : 'Schedule a New Card'}</h2>
             
+            {warning && (
+                <div className="mb-6 p-4 bg-yellow-50 border border-yellow-300 text-yellow-800 rounded-lg" role="alert">
+                    <p className="font-semibold">Attention Required</p>
+                    <p>{warning}</p>
+                </div>
+            )}
+
             {isEditing && formData.active_card_id && (
                 <div className="mb-6 p-4 bg-sky-50 border border-sky-200 rounded-lg text-center">
                     <p className="text-sm text-sky-800">
