@@ -1,13 +1,14 @@
 {
   "name": "trello-scheduler-dev",
-  "version": "0.6.0",
+  "version": "0.5.3",
   "private": true,
   "scripts": {
     "dev": "concurrently \"npm run dev --prefix backend\" \"npm start --prefix frontend\"",
-    "postversion": "npm_config_yes=true npx json -I -f backend/package.json -e \"this.version = process.env.npm_package_version\" && npm_config_yes=true npx json -I -f frontend/package.json -e \"this.version = process.env.npm_package_version\""
+    "postversion": "cross-env npm_config_yes=true npx json -I -f backend/package.json -e \"this.version = process.env.npm_package_version\" && cross-env npm_config_yes=true npx json -I -f frontend/package.json -e \"this.version = process.env.npm_package_version\""
   },
   "devDependencies": {
     "concurrently": "^8.2.2",
+    "cross-env": "^7.0.3",
     "json": "^11.0.0"
   }
 }
