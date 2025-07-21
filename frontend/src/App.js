@@ -35,25 +35,24 @@ const WelcomeScreen = () => (
 );
 
 /**
- * @description The main application component, acting primarily as a layout and view manager.
+ * @description The main application component.
  */
 function App() {
     // --- State Management ---
-    // Core data state is managed by the SchedulesContext
     const { 
         schedules, 
         trelloMembers, 
         trelloLabels, 
         categories, 
         isLoading, 
-        error: dataError, // Rename to avoid conflict with local error state
+        error: dataError,
         loadAllData 
     } = useSchedules();
     
-    // UI-specific state remains in App.js
+    const [appVersion, setAppVersion] = useState('');
     const [activeView, setActiveView] = useState('welcome');
     const [expandedItemId, setExpandedItemId] = useState(null);
-    const [formError, setFormError] = useState(null); // Local error state for the form
+    const [formError, setFormError] = useState(null);
 
     // Form-related state
     const [isEditing, setIsEditing] = useState(false);
@@ -73,14 +72,18 @@ function App() {
     const { isAuthenticated, user, logout, isAdmin } = useAuth();
 
     // --- Data Fetching and Lifecycle ---
-    // This effect now simply calls the load function from the context.
+    useEffect(() => {
+        apiClient.get('/api/version')
+            .then(res => setAppVersion(res.data.version))
+            .catch(err => console.error("Could not fetch app version", err));
+    }, []);
+
     useEffect(() => {
         if (isAuthenticated) {
             loadAllData();
         }
     }, [isAuthenticated, loadAllData]);
 
-    // This effect checks the Trello configuration status from the loaded schedules data.
     useEffect(() => {
         const checkConfig = async () => {
             try {
@@ -93,19 +96,24 @@ function App() {
         if (isAuthenticated) {
             checkConfig();
         }
-    }, [isAuthenticated, schedules]); // Re-check when schedules data changes
+    }, [isAuthenticated, schedules]);
 
     // --- Event Handlers ---
-    const handleFormSubmit = async (submittedFormData) => {
-        const method = isEditing ? 'put' : 'post';
-        const url = isEditing ? `/api/schedules/${selectedScheduleId}` : '/api/schedules';
-        
+    const handleFormSubmit = async (submittedFormData, setError) => {
         try {
-          await apiClient[method](url, submittedFormData);
-          await loadAllData(); // Refresh all data from the context
+          await apiClient[isEditing ? 'put' : 'post'](
+              isEditing ? `/api/schedules/${selectedScheduleId}` : '/api/schedules',
+              submittedFormData
+          );
+          await loadAllData();
           resetForm(true);
         } catch (err) {
-          setFormError(`Failed to ${isEditing ? 'update' : 'add'} schedule.`);
+            if (err.response?.data?.errors) {
+                const formattedErrors = err.response.data.errors.map(e => e.message).join(' ');
+                setError(formattedErrors);
+            } else {
+                setError(`Failed to ${isEditing ? 'update' : 'add'} schedule.`);
+            }
         }
     };
 
@@ -184,14 +192,16 @@ function App() {
                 <aside className="col-span-4 bg-white p-6 flex flex-col border-r border-slate-200">
                     <div className="text-center mb-6">
                         <h1 className="text-2xl font-bold text-slate-900">Trello Scheduler</h1>
-                        <a 
-                            href="https://github.com/bodybuildingfly/trello-card-scheduler" 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-xs text-slate-400 mt-1 hover:text-sky-600 hover:underline"
-                        >
-                            Version {process.env.REACT_APP_VERSION || 'dev'}
-                        </a>
+                        {appVersion && (
+                            <a 
+                                href="https://github.com/bodybuildingfly/trello-card-scheduler" 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-xs text-slate-400 mt-1 hover:text-sky-600 hover:underline"
+                            >
+                                Version {appVersion}
+                            </a>
+                        )}
                     </div>
 
                     <div className="mb-6">
@@ -246,10 +256,10 @@ function App() {
 
                 {/* --- Main Content Area --- */}
                 <main className="col-span-8 p-8 overflow-y-auto">
-                    {dataError && (
+                    {(dataError || formError) && (
                         <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-lg mb-6" role="alert">
                             <p className="font-bold">An Error Occurred</p>
-                            <p>{dataError}</p>
+                            <p>{dataError || formError}</p>
                         </div>
                     )}
                     {!isTrelloConfigured && <TrelloConfigBanner onGoToSettings={() => setActiveView('settings')} />}

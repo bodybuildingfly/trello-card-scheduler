@@ -2,11 +2,6 @@ import pool from '../db.js';
 import logAuditEvent from '../utils/logger.js';
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
-
-// Helper to get __dirname in ES Modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 /**
  * @description Gets the application version from the backend's package.json file.
@@ -15,8 +10,9 @@ const __dirname = path.dirname(__filename);
  */
 export const getAppVersion = (req, res) => {
     try {
-        // Correct the path to navigate up one directory from 'controllers' to 'backend'
-        const packageJsonPath = path.resolve(__dirname, '../package.json');
+        // Use process.cwd() which is the root of the backend service in the container.
+        // This is the most reliable way to find the package.json file.
+        const packageJsonPath = path.join(process.cwd(), 'package.json');
         const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
         res.json({ version: packageJson.version });
     } catch (error) {
