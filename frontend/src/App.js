@@ -101,12 +101,19 @@ function App() {
     // --- Event Handlers ---
     const handleFormSubmit = async (submittedFormData, setError) => {
         try {
-          await apiClient[isEditing ? 'put' : 'post'](
-              isEditing ? `/api/schedules/${selectedScheduleId}` : '/api/schedules',
-              submittedFormData
-          );
-          await loadAllData();
-          resetForm(true);
+        // Create a new object to avoid mutating the original state directly
+        const dataToSubmit = {
+            ...submittedFormData,
+            // Ensure frequency_interval is an integer
+            frequency_interval: parseInt(submittedFormData.frequency_interval, 10)
+        };
+
+        await apiClient[isEditing ? 'put' : 'post'](
+            isEditing ? `/api/schedules/${selectedScheduleId}` : '/api/schedules',
+            dataToSubmit
+        );
+        await loadAllData();
+        resetForm(true);
         } catch (err) {
             if (err.response?.data?.errors) {
                 const formattedErrors = err.response.data.errors.map(e => e.message).join(' ');
