@@ -111,7 +111,11 @@ const ScheduleForm = ({
     const formRef = useRef(null);
 
     useEffect(() => {
-        let dataToSet = { ...initialData };
+        // Ensure frequency_interval is treated as a number from the start
+        const dataToSet = {
+            ...initialData,
+            frequency_interval: parseInt(initialData.frequency_interval, 10) || 1
+        };
         setWarning(''); // Clear previous warnings
 
         // Check for orphaned schedules when editing
