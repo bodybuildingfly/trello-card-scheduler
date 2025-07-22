@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 
 // --- Component Imports ---
 import SettingsPage from './components/SettingsPage';
@@ -19,7 +19,7 @@ import { useSchedules } from './context/SchedulesContext';
 
 // --- Helper Icon Imports ---
 const PlusIcon = () => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
-const SettingsIcon = () => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>;
+const SettingsIcon = () => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06-.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>;
 const AuditLogIcon = () => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>;
 const UsersIcon = () => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>;
 const DashboardIcon = () => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>;
@@ -68,8 +68,38 @@ function App() {
     const [isTrelloConfigured, setIsTrelloConfigured] = useState(true);
     const [statusKey, setStatusKey] = useState(0);
     const [triggeringId, setTriggeringId] = useState(null);
+    const [collapsedCategories, setCollapsedCategories] = useState(() => {
+        try {
+            const item = window.localStorage.getItem('collapsedCategories');
+            return item ? JSON.parse(item) : {};
+        } catch (error) {
+            console.error(error);
+            return {};
+        }
+    });
+
+    // Filter state
+    const [filterOwner, setFilterOwner] = useState('all');
+    const [filterFrequency, setFilterFrequency] = useState('all');
+    const [filterTitle, setFilterTitle] = useState('');
 
     const { isAuthenticated, user, logout, isAdmin } = useAuth();
+
+    const filteredAndGroupedSchedules = useMemo(() => {
+        const filtered = {};
+        for (const category in schedules) {
+            const filteredSchedules = schedules[category].filter(schedule => {
+                const ownerMatch = filterOwner === 'all' || schedule.owner_name === filterOwner;
+                const frequencyMatch = filterFrequency === 'all' || schedule.frequency === filterFrequency;
+                const titleMatch = filterTitle === '' || schedule.title.toLowerCase().includes(filterTitle.toLowerCase());
+                return ownerMatch && frequencyMatch && titleMatch;
+            });
+            if (filteredSchedules.length > 0) {
+                filtered[category] = filteredSchedules;
+            }
+        }
+        return filtered;
+    }, [schedules, filterOwner, filterFrequency, filterTitle]);
 
     // --- Data Fetching and Lifecycle ---
     useEffect(() => {
@@ -98,22 +128,28 @@ function App() {
         }
     }, [isAuthenticated, schedules]);
 
+    useEffect(() => {
+        try {
+            window.localStorage.setItem('collapsedCategories', JSON.stringify(collapsedCategories));
+        } catch (error) {
+            console.error(error);
+        }
+    }, [collapsedCategories]);
+
     // --- Event Handlers ---
     const handleFormSubmit = async (submittedFormData, setError) => {
         try {
-        // Create a new object to avoid mutating the original state directly
-        const dataToSubmit = {
+          const dataToSubmit = {
             ...submittedFormData,
-            // Ensure frequency_interval is an integer
             frequency_interval: parseInt(submittedFormData.frequency_interval, 10)
-        };
-
-        await apiClient[isEditing ? 'put' : 'post'](
-            isEditing ? `/api/schedules/${selectedScheduleId}` : '/api/schedules',
-            dataToSubmit
-        );
-        await loadAllData();
-        resetForm(true);
+          };
+    
+          await apiClient[isEditing ? 'put' : 'post'](
+              isEditing ? `/api/schedules/${selectedScheduleId}` : '/api/schedules',
+              dataToSubmit
+          );
+          await loadAllData();
+          resetForm(true);
         } catch (err) {
             if (err.response?.data?.errors) {
                 const formattedErrors = err.response.data.errors.map(e => e.message).join(' ');
@@ -184,6 +220,13 @@ function App() {
         }
     };
 
+    const toggleCategory = (categoryName) => {
+        setCollapsedCategories(prev => ({
+            ...prev,
+            [categoryName]: !prev[categoryName]
+        }));
+    };
+
     return (
         <ProtectedRoute>
             <div className="h-screen w-screen bg-slate-100 font-sans text-slate-800 grid grid-cols-12">
@@ -196,35 +239,57 @@ function App() {
                 )}
 
                 {/* --- Left Sidebar --- */}
-                <aside className="col-span-4 bg-white p-6 flex flex-col border-r border-slate-200">
-                    <div className="text-center mb-6">
-                        <h1 className="text-2xl font-bold text-slate-900">Trello Scheduler</h1>
-                        {appVersion && (
-                            <a 
-                                href="https://github.com/bodybuildingfly/trello-card-scheduler" 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="text-xs text-slate-400 mt-1 hover:text-sky-600 hover:underline"
+                <aside className="col-span-4 bg-white border-r border-slate-200 flex flex-col h-screen">
+                    <div className="p-6 flex-shrink-0">
+                        <div className="text-center mb-6">
+                            <h1 className="text-2xl font-bold text-slate-900">Trello Scheduler</h1>
+                            {appVersion && (
+                                <a 
+                                    href="https://github.com/bodybuildingfly/trello-card-scheduler" 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="text-xs text-slate-400 mt-1 hover:text-sky-600 hover:underline"
+                                >
+                                    Version {appVersion}
+                                </a>
+                            )}
+                        </div>
+
+                        <div className="mb-6">
+                            <button 
+                                onClick={() => { resetForm(); setActiveView('form'); }} 
+                                disabled={!isTrelloConfigured} 
+                                className="w-full flex items-center justify-center px-4 py-3 rounded-lg bg-sky-600 text-white font-semibold hover:bg-sky-700 shadow-md disabled:bg-slate-400 disabled:cursor-not-allowed"
                             >
-                                Version {appVersion}
-                            </a>
-                        )}
+                                <PlusIcon /> <span className="ml-2">Schedule a New Card</span>
+                            </button>
+                        </div>
                     </div>
 
-                    <div className="mb-6">
-                        <button 
-                            onClick={() => { resetForm(); setActiveView('form'); }} 
-                            disabled={!isTrelloConfigured} 
-                            className="w-full flex items-center justify-center px-4 py-3 rounded-lg bg-sky-600 text-white font-semibold hover:bg-sky-700 shadow-md disabled:bg-slate-400 disabled:cursor-not-allowed"
-                        >
-                            <PlusIcon /> <span className="ml-2">Schedule a New Card</span>
-                        </button>
+                    <div className="px-6 pb-4 flex-shrink-0">
+                        <div className="p-4 bg-slate-50 rounded-lg">
+                            <h3 className="font-semibold text-slate-600 mb-2">Filters</h3>
+                            <div className="space-y-2">
+                                <input type="text" placeholder="Search by title..." value={filterTitle} onChange={e => setFilterTitle(e.target.value)} className="form-input" />
+                                <select value={filterOwner} onChange={e => setFilterOwner(e.target.value)} className="form-input">
+                                    <option value="all">All Assignees</option>
+                                    {trelloMembers.map(member => <option key={member.id} value={member.fullName}>{member.fullName}</option>)}
+                                </select>
+                                <select value={filterFrequency} onChange={e => setFilterFrequency(e.target.value)} className="form-input">
+                                    <option value="all">All Frequencies</option>
+                                    <option value="daily">Daily</option>
+                                    <option value="weekly">Weekly</option>
+                                    <option value="monthly">Monthly</option>
+                                    <option value="yearly">Yearly</option>
+                                    <option value="once">Once</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
 
-                    <div className="flex-grow overflow-y-auto">
+                    <div className="flex-grow overflow-y-auto min-h-0 px-6">
                         <ScheduleList 
-                            schedules={schedules}
-                            trelloMembers={trelloMembers}
+                            schedules={filteredAndGroupedSchedules}
                             isLoading={isLoading}
                             triggeringId={triggeringId}
                             expandedItemId={expandedItemId}
@@ -232,11 +297,13 @@ function App() {
                             onDeleteClick={handleDeleteClick}
                             onCloneClick={handleCloneClick}
                             onManualTrigger={handleManualTrigger}
+                            collapsedCategories={collapsedCategories}
+                            onToggleCategory={toggleCategory}
                         />
                     </div>
 
                     {/* --- Admin & User Section --- */}
-                    <div className="mt-auto pt-6 border-t border-slate-200">
+                    <div className="p-6 flex-shrink-0 pt-6 border-t border-slate-200">
                         {isAdmin && (
                             <nav className="space-y-2 mb-4">
                                 <p className="px-3 text-xs font-semibold uppercase text-slate-400">Admin</p>

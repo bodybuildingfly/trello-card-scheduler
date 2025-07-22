@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React from 'react';
 
 // --- Helper Icon Imports ---
 const DeleteIcon = () => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-slate-500 group-hover:text-red-700"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>;
@@ -27,12 +27,11 @@ const formatDate = (dateString) => {
  * @description A component that displays a single collapsible category of schedules.
  * @param {object} props - The component props.
  */
-const CategorySection = ({ categoryName, schedules, ...rest }) => {
-    const [isCategoryExpanded, setIsCategoryExpanded] = useState(true);
+const CategorySection = ({ categoryName, schedules, isCategoryExpanded, onToggleCategory, ...rest }) => {
     return (
         <div>
             <button 
-                onClick={() => setIsCategoryExpanded(!isCategoryExpanded)} 
+                onClick={() => onToggleCategory(categoryName)} 
                 className="w-full flex justify-between items-center text-left py-2 px-2 rounded-md hover:bg-slate-100"
             >
                 <span className="font-bold text-slate-700">{categoryName} ({schedules.length})</span>
@@ -88,38 +87,19 @@ const ScheduleItem = ({ schedule, isExpanded, onItemSelect, triggeringId, onDele
 
 
 /**
- * @description The main component for displaying and filtering the list of schedules.
+ * @description The main component for displaying the list of schedules.
  * @param {object} props - The component props.
  */
 const ScheduleList = ({ 
     schedules,
-    trelloMembers, 
     isLoading, 
     expandedItemId,
     onItemSelect,
+    collapsedCategories,
+    onToggleCategory,
     ...rest 
 }) => {
     
-    const [filterOwner, setFilterOwner] = useState('all');
-    const [filterFrequency, setFilterFrequency] = useState('all');
-    const [filterTitle, setFilterTitle] = useState('');
-
-    const filteredAndGroupedSchedules = useMemo(() => {
-        const filtered = {};
-        for (const category in schedules) {
-            const filteredSchedules = schedules[category].filter(schedule => {
-                const ownerMatch = filterOwner === 'all' || schedule.owner_name === filterOwner;
-                const frequencyMatch = filterFrequency === 'all' || schedule.frequency === filterFrequency;
-                const titleMatch = filterTitle === '' || schedule.title.toLowerCase().includes(filterTitle.toLowerCase());
-                return ownerMatch && frequencyMatch && titleMatch;
-            });
-            if (filteredSchedules.length > 0) {
-                filtered[category] = filteredSchedules;
-            }
-        }
-        return filtered;
-    }, [schedules, filterOwner, filterFrequency, filterTitle]);
-
     const formatFrequency = (schedule) => {
         const { frequency, frequency_interval, frequency_details, trigger_hour, trigger_minute, trigger_ampm } = schedule;
         const interval = parseInt(frequency_interval, 10) || 1;
@@ -156,32 +136,15 @@ const ScheduleList = ({
 
     return (
         <div>
-            <div className="mb-4 p-4 bg-slate-50 rounded-lg">
-                <h3 className="font-semibold text-slate-600 mb-2">Filters</h3>
-                <div className="space-y-2">
-                    <input type="text" placeholder="Search by title..." value={filterTitle} onChange={e => setFilterTitle(e.target.value)} className="form-input" />
-                    <select value={filterOwner} onChange={e => setFilterOwner(e.target.value)} className="form-input">
-                        <option value="all">All Assignees</option>
-                        {trelloMembers.map(member => <option key={member.id} value={member.fullName}>{member.fullName}</option>)}
-                    </select>
-                    <select value={filterFrequency} onChange={e => setFilterFrequency(e.target.value)} className="form-input">
-                        <option value="all">All Frequencies</option>
-                        <option value="daily">Daily</option>
-                        <option value="weekly">Weekly</option>
-                        <option value="monthly">Monthly</option>
-                        <option value="yearly">Yearly</option>
-                        <option value="once">Once</option>
-                    </select>
-                </div>
-            </div>
-            
             {isLoading ? <Spinner /> : (
                 <div className="space-y-2">
-                    {Object.keys(filteredAndGroupedSchedules).sort().map(categoryName => (
+                    {Object.keys(schedules).sort().map(categoryName => (
                         <CategorySection
                             key={categoryName}
                             categoryName={categoryName}
-                            schedules={filteredAndGroupedSchedules[categoryName]}
+                            schedules={schedules[categoryName]}
+                            isCategoryExpanded={!collapsedCategories[categoryName]}
+                            onToggleCategory={onToggleCategory}
                             expandedItemId={expandedItemId}
                             onItemSelect={onItemSelect}
                             formatFrequency={formatFrequency}
