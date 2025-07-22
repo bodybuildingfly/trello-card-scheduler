@@ -59,10 +59,13 @@ const CategorySection = ({ categoryName, schedules, isCategoryExpanded, onToggle
  * @param {object} props - The component props.
  */
 const ScheduleItem = ({ schedule, isExpanded, onItemSelect, triggeringId, onDeleteClick, onCloneClick, onManualTrigger, formatFrequency }) => (
-    <div className="py-2 group border-b border-slate-100 last:border-b-0">
+    <div className={`py-2 group border-b border-slate-100 last:border-b-0 ${!schedule.is_active ? 'opacity-50' : ''}`}>
         <div className="flex items-start justify-between cursor-pointer" onClick={() => onItemSelect(schedule)}>
             <div>
-                <h3 className={`font-semibold transition-colors ${isExpanded ? 'text-sky-600' : 'text-slate-800 group-hover:text-sky-600'}`}>{schedule.title}</h3>
+                <h3 className={`font-semibold transition-colors ${isExpanded ? 'text-sky-600' : 'text-slate-800 group-hover:text-sky-600'}`}>
+                    {schedule.title}
+                    {!schedule.is_active && <span className="ml-2 text-xs font-bold text-slate-500">(Disabled)</span>}
+                </h3>
                 <p className="text-sm text-slate-500 mt-1">Assignee: {schedule.owner_name}</p>
             </div>
             <div className="flex items-center space-x-1 flex-shrink-0 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">

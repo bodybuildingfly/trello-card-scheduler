@@ -1,12 +1,13 @@
 import express from 'express';
 import { 
   getAllSchedules, 
-  getUniqueCategories, // Import the new function
+  getUniqueCategories,
   createSchedule, 
   updateSchedule, 
   deleteSchedule, 
   triggerSchedule,
-  cloneSchedule
+  cloneSchedule,
+  toggleScheduleStatus
 } from '../controllers/schedulesController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
@@ -24,5 +25,6 @@ router.put('/:id', updateSchedule);
 router.delete('/:id', deleteSchedule);
 router.post('/:id/trigger', triggerSchedule);
 router.post('/:id/clone', cloneSchedule);
+router.put('/:id/toggle-active', toggleScheduleStatus); // New route for toggling active status
 
 export default router;

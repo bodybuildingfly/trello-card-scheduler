@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import apiClient from '../api';
 
 // --- Helper Data (Specific to this form) ---
 const DAYS_OF_WEEK = [ { id: '1', name: 'Mon' }, { id: '2', name: 'Tue' }, { id: '3', name: 'Wed' }, { id: '4', name: 'Thu' }, { id: '5', name: 'Fri' }, { id: '6', name: 'Sat' }, { id: '0', name: 'Sun' }];
@@ -101,7 +102,8 @@ const ScheduleForm = ({
     triggeringId,
     onSubmit, 
     onCancel,
-    onManualTrigger
+    onManualTrigger,
+    onToggleActive
 }) => {
     
     const [formData, setFormData] = useState(initialData);
@@ -111,8 +113,7 @@ const ScheduleForm = ({
     const formRef = useRef(null);
 
     useEffect(() => {
-        // Ensure frequency_interval is treated as a number from the start
-        const dataToSet = {
+        let dataToSet = { 
             ...initialData,
             frequency_interval: parseInt(initialData.frequency_interval, 10) || 1
         };
@@ -165,24 +166,35 @@ const ScheduleForm = ({
         onSubmit(formData, setError);
     };
 
+    const handleToggleActive = async () => {
+        try {
+            const newStatus = !formData.is_active;
+            await onToggleActive(formData.id, newStatus);
+            setFormData(prev => ({ ...prev, is_active: newStatus }));
+        } catch (err) {
+            setError('Failed to update schedule status.');
+        }
+    };
+
     const [yearlyMonth, yearlyDay] = (formData.frequency_details || '1-1').split('-');
 
     return (
         <div ref={formRef} className="bg-white p-6 sm:p-8 rounded-2xl shadow-lg mb-10 max-w-4xl mx-auto">
-            <h2 className="text-3xl font-semibold text-slate-800 mb-6 border-b border-slate-200 pb-4">{isEditing ? 'Edit Schedule' : 'Schedule a New Card'}</h2>
+            <div className="flex justify-between items-center mb-6 border-b border-slate-200 pb-4">
+                <h2 className="text-3xl font-semibold text-slate-800">{isEditing ? 'Edit Schedule' : 'Schedule a New Card'}</h2>
+                {isEditing && formData.active_card_id && (
+                    <div className="p-2 bg-sky-100 border border-sky-200 rounded-lg text-center">
+                        <a href={`https://trello.com/c/${formData.active_card_id}`} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-sky-800 hover:underline">
+                            View Active Card
+                        </a>
+                    </div>
+                )}
+            </div>
             
             {warning && (
                 <div className="mb-6 p-4 bg-yellow-50 border border-yellow-300 text-yellow-800 rounded-lg" role="alert">
                     <p className="font-semibold">Attention Required</p>
                     <p>{warning}</p>
-                </div>
-            )}
-
-            {isEditing && formData.active_card_id && (
-                <div className="mb-6 p-4 bg-sky-50 border border-sky-200 rounded-lg text-center">
-                    <p className="text-sm text-sky-800">
-                        <strong>Active Card:</strong> <a href={`https://trello.com/c/${formData.active_card_id}`} target="_blank" rel="noopener noreferrer" className="font-semibold hover:underline">View on Trello</a>
-                    </p>
                 </div>
             )}
 
@@ -330,21 +342,34 @@ const ScheduleForm = ({
 
                 {error && <p className="text-red-600 bg-red-100 p-3 rounded-lg text-center">{error}</p>}
 
-                <div className="flex items-center justify-end space-x-4 pt-4">
-                    {isEditing && (
-                        <button 
-                            type="button"
-                            onClick={() => onManualTrigger(formData.id)}
-                            disabled={triggeringId === formData.id}
-                            className="mr-auto px-4 py-2.5 rounded-lg bg-green-100 text-green-800 font-semibold hover:bg-green-200 disabled:bg-slate-200"
-                        >
-                            {triggeringId === formData.id ? 'Creating...' : 'Create Card Now'}
+                <div className="flex items-center justify-between space-x-4 pt-4">
+                    <div className="flex items-center space-x-4">
+                        {isEditing && (
+                            <button 
+                                type="button"
+                                onClick={() => onManualTrigger(formData.id)}
+                                disabled={triggeringId === formData.id}
+                                className="px-4 py-2.5 rounded-lg bg-green-100 text-green-800 font-semibold hover:bg-green-200 disabled:bg-slate-200"
+                            >
+                                {triggeringId === formData.id ? 'Creating...' : 'Create Card Now'}
+                            </button>
+                        )}
+                        {isEditing && (
+                            <button
+                                type="button"
+                                onClick={handleToggleActive}
+                                className={`px-4 py-2.5 rounded-lg font-semibold ${formData.is_active ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200' : 'bg-slate-200 text-slate-800 hover:bg-slate-300'}`}
+                            >
+                                {formData.is_active ? 'Disable' : 'Enable'}
+                            </button>
+                        )}
+                    </div>
+                    <div className="flex items-center space-x-4">
+                        <button type="button" onClick={onCancel} className="px-6 py-2.5 rounded-lg bg-slate-200 text-slate-800 font-semibold hover:bg-slate-300">Cancel</button>
+                        <button type="submit" disabled={isLoading} className="flex items-center justify-center px-6 py-2.5 rounded-lg bg-sky-600 text-white font-semibold hover:bg-sky-700 disabled:bg-sky-300 shadow-md">
+                            {isLoading ? 'Saving...' : (isEditing ? 'Update Schedule' : 'Schedule Card')}
                         </button>
-                    )}
-                    <button type="button" onClick={onCancel} className="px-6 py-2.5 rounded-lg bg-slate-200 text-slate-800 font-semibold hover:bg-slate-300">Cancel</button>
-                    <button type="submit" disabled={isLoading} className="flex items-center justify-center px-6 py-2.5 rounded-lg bg-sky-600 text-white font-semibold hover:bg-sky-700 disabled:bg-sky-300 shadow-md">
-                        {isLoading ? 'Saving...' : (isEditing ? 'Update Schedule' : 'Schedule Card')}
-                    </button>
+                    </div>
                 </div>
             </form>
         </div>

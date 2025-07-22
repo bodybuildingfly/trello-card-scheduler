@@ -13,7 +13,6 @@ let cronJob;
 export const calculateNextDueDate = (schedule) => {
     const { frequency, frequency_interval, frequency_details, trigger_hour, trigger_minute, trigger_ampm } = schedule;
     
-    // The calculation is now always based on the current time.
     const now = new Date();
     let nextDate = new Date(); // Start with today
 
@@ -25,7 +24,6 @@ export const calculateNextDueDate = (schedule) => {
     // Set the target time for the calculated date
     nextDate.setHours(hour, parseInt(trigger_minute, 10) || 0, 0, 0);
 
-    // --- LOGIC FOR FINDING THE NEXT DATE ---
     const advanceDate = () => {
         switch (frequency) {
             case 'daily':
@@ -34,7 +32,6 @@ export const calculateNextDueDate = (schedule) => {
             case 'weekly':
                 const scheduledDays = (frequency_details || '').split(',').map(d => parseInt(d, 10));
                 if (scheduledDays.length > 0) {
-                    // Find the next valid day of the week from the current date
                     let currentDay = nextDate.getDay();
                     let daysToAdd = 1; // Start looking from tomorrow
                     while (daysToAdd <= 7) {
@@ -70,8 +67,18 @@ export const calculateNextDueDate = (schedule) => {
         }
     };
 
+    // --- NEW LOGIC TO FIX WEEKLY SCHEDULES ---
+    // First, check if today is a valid day for weekly schedules. If not, advance the date.
+    if (frequency === 'weekly') {
+        const scheduledDays = (frequency_details || '').split(',').map(d => parseInt(d, 10));
+        if (scheduledDays.length > 0 && !scheduledDays.includes(nextDate.getDay())) {
+            // If today is not a scheduled day, we must advance, regardless of the time.
+            advanceDate();
+        }
+    }
+
     // --- SAFETY NET ---
-    // If the calculated date for today is already in the past (e.g., it's 10 AM and the schedule was for 9 AM),
+    // If the calculated date is still in the past (e.g., it's 2 PM and the schedule was for 1 PM today),
     // this loop will advance the date to the next valid interval.
     let safetyCounter = 0;
     while (nextDate <= now && safetyCounter < 1000) {
@@ -92,7 +99,7 @@ const runScheduler = async (appSettings) => {
     const startTime = Date.now();
     
     try {
-        const { rows: schedules } = await pool.query('SELECT * FROM schedules WHERE frequency != \'once\'');
+        const { rows: schedules } = await pool.query("SELECT * FROM schedules WHERE frequency != 'once' AND is_active = TRUE");
         for (const schedule of schedules) {
             let shouldCreateNewCard = schedule.needs_new_card;
             if (schedule.active_card_id && !shouldCreateNewCard) {

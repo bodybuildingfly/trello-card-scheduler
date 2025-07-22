@@ -19,6 +19,7 @@ const scheduleSchema = z.object({
     start_date: z.string().nullable().optional(),
     end_date: z.string().nullable().optional(),
     trello_label_id: z.string().nullable().optional(),
+    is_active: z.boolean().optional(),
 });
 
 /**
@@ -73,14 +74,14 @@ export const createSchedule = async (req, res) => {
         return res.status(400).json({ message: "Invalid input.", errors: validationResult.error.issues });
     }
 
-    const { title, owner_name, description, category, frequency, frequency_interval, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date, end_date, trello_label_id } = validationResult.data;
+    const { title, owner_name, description, category, frequency, frequency_interval, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date, end_date, trello_label_id, is_active } = validationResult.data;
     
     const query = `
-        INSERT INTO schedules (title, owner_name, description, category, frequency, frequency_interval, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date, end_date, trello_label_id) 
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) 
+        INSERT INTO schedules (title, owner_name, description, category, frequency, frequency_interval, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date, end_date, trello_label_id, is_active) 
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) 
         RETURNING *;
     `;
-    const values = [title, owner_name, description, category || 'Uncategorized', frequency, frequency_interval || 1, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date || null, end_date || null, trello_label_id || null];
+    const values = [title, owner_name, description, category || 'Uncategorized', frequency, frequency_interval || 1, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date || null, end_date || null, trello_label_id || null, is_active !== false];
     
     try {
         const result = await pool.query(query, values);
@@ -104,7 +105,7 @@ export const updateSchedule = async (req, res) => {
     }
 
     const { id } = req.params;
-    const { title, owner_name, description, category, frequency, frequency_interval, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date, end_date, trello_label_id } = validationResult.data;
+    const { title, owner_name, description, category, frequency, frequency_interval, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date, end_date, trello_label_id, is_active } = validationResult.data;
     
     try {
         const beforeResult = await pool.query('SELECT * FROM schedules WHERE id = $1', [id]);
@@ -116,17 +117,47 @@ export const updateSchedule = async (req, res) => {
             UPDATE schedules SET 
             title = $1, owner_name = $2, description = $3, category = $4, frequency = $5, 
             frequency_interval = $6, frequency_details = $7, trigger_hour = $8, 
-            trigger_minute = $9, trigger_ampm = $10, start_date = $11, end_date = $12, trello_label_id = $13
-            WHERE id = $14 
+            trigger_minute = $9, trigger_ampm = $10, start_date = $11, end_date = $12, trello_label_id = $13, is_active = $14
+            WHERE id = $15 
             RETURNING *;
         `;
-        const values = [title, owner_name, description, category || 'Uncategorized', frequency, frequency_interval || 1, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date || null, end_date || null, trello_label_id || null, id];
+        const values = [title, owner_name, description, category || 'Uncategorized', frequency, frequency_interval || 1, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date || null, end_date || null, trello_label_id || null, is_active, id];
         const result = await pool.query(query, values);
         
         await logAuditEvent('INFO', `Schedule updated: "${result.rows[0].title}"`, { before: beforeResult.rows[0], after: result.rows[0] }, req.user);
         res.status(200).json(result.rows[0]);
     } catch (err) {
         console.error('Update schedule error:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
+
+/**
+ * @description Toggles the active status of a schedule.
+ * @route PUT /api/schedules/:id/toggle-active
+ * @access Private
+ */
+export const toggleScheduleStatus = async (req, res) => {
+    const { id } = req.params;
+    const { is_active } = req.body;
+
+    if (typeof is_active !== 'boolean') {
+        return res.status(400).json({ error: 'Invalid "is_active" value provided.' });
+    }
+
+    try {
+        const { rows } = await pool.query(
+            'UPDATE schedules SET is_active = $1 WHERE id = $2 RETURNING *',
+            [is_active, id]
+        );
+        if (rows.length === 0) {
+            return res.status(404).json({ error: 'Schedule not found' });
+        }
+        const status = is_active ? 'enabled' : 'disabled';
+        await logAuditEvent('INFO', `Schedule ${status}: "${rows[0].title}"`, { schedule: rows[0] }, req.user);
+        res.status(200).json(rows[0]);
+    } catch (err) {
+        console.error('Toggle schedule status error:', err);
         res.status(500).json({ error: 'Internal server error' });
     }
 };

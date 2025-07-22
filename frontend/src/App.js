@@ -57,7 +57,7 @@ function App() {
     // Form-related state
     const [isEditing, setIsEditing] = useState(false);
     const [selectedScheduleId, setSelectedScheduleId] = useState(null);
-    const initialFormState = { title: '', owner_name: '', description: '', category: '', frequency: 'once', frequency_interval: 1, frequency_details: '1', start_date: '', end_date: '', trigger_hour: '09', trigger_minute: '00', trigger_ampm: 'am', trello_label_id: '' };
+    const initialFormState = { title: '', owner_name: '', description: '', category: '', frequency: 'once', frequency_interval: 1, frequency_details: '1', start_date: '', end_date: '', trigger_hour: '09', trigger_minute: '00', trigger_ampm: 'am', trello_label_id: '', is_active: true };
     const [formData, setFormData] = useState(initialFormState);
 
     // Modal-related state
@@ -174,7 +174,7 @@ function App() {
     const handleItemSelect = (schedule) => {
         setIsEditing(true);
         setSelectedScheduleId(schedule.id);
-        setFormData({ ...schedule, trigger_hour: schedule.trigger_hour || '09', trigger_minute: schedule.trigger_minute || '00', trigger_ampm: schedule.trigger_ampm || 'am' });
+        setFormData({ ...initialFormState, ...schedule });
         setActiveView('form');
         setExpandedItemId(prevId => (prevId === schedule.id ? null : schedule.id));
     };
@@ -200,7 +200,8 @@ function App() {
     const handleManualTrigger = async (scheduleId) => {
         setTriggeringId(scheduleId);
         try {
-            await apiClient.post(`/api/schedules/${scheduleId}/trigger`);
+            const { data: newCard } = await apiClient.post(`/api/schedules/${scheduleId}/trigger`);
+            setFormData(prev => ({ ...prev, active_card_id: newCard.id }));
             await loadAllData();
         } catch (error) {
             console.error("Manual trigger failed", error);
@@ -225,6 +226,11 @@ function App() {
             ...prev,
             [categoryName]: !prev[categoryName]
         }));
+    };
+
+    const handleToggleActive = async (scheduleId, newStatus) => {
+        await apiClient.put(`/api/schedules/${scheduleId}/toggle-active`, { is_active: newStatus });
+        await loadAllData();
     };
 
     return (
@@ -353,6 +359,7 @@ function App() {
                                 onSubmit={handleFormSubmit}
                                 onCancel={() => resetForm(true)}
                                 onManualTrigger={handleManualTrigger}
+                                onToggleActive={handleToggleActive}
                             />
                         )}
                         {isAdmin && activeView === 'dashboard' && <DashboardPage />}

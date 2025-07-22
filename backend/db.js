@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import bcrypt from 'bcryptjs';
 import { fileURLToPath } from 'url';
+import { runMigrations } from './migrate.js'; // Import the new migration runner
 
 const { Pool } = pg;
 
@@ -77,6 +78,7 @@ export const initializeDatabase = async () => {
     try {
         await initializeDatabaseSchema(client);
         await createInitialAdmin(client);
+        await runMigrations(client); // Run data migrations after schema is set up
     } catch (err) {
         console.error('[CRITICAL] Failed to initialize database.', err);
         throw err; // Re-throw to be caught by the main server start function

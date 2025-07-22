@@ -24,8 +24,6 @@ const SchedulerStatus = ({ isConfigured }) => {
 
     useEffect(() => {
         fetchStatus();
-        const interval = setInterval(fetchStatus, 60000);
-        return () => clearInterval(interval);
     }, [fetchStatus]);
 
     return (
