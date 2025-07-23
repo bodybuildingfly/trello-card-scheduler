@@ -1,8 +1,7 @@
 /**
  * @file frontend/src/components/ScheduleForm.js
- * @description This version fixes a bug where start and end dates were not correctly
- * displayed after being saved. A helper function has been added to format the
- * date from the API into the required YYYY-MM-DD format for the date input fields.
+ * @description This version has been updated to use the new `text-on-accent` theme
+ * color for the 'View Active Card' link for better visibility in dark mode.
  */
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import apiClient from '../api';
@@ -69,12 +68,12 @@ const CategoryCombobox = ({ value, onChange, options }) => {
                 placeholder="e.g., Fitness, Work, Personal"
             />
             {isOpen && (
-                <ul className="absolute z-10 w-full bg-white border border-slate-300 rounded-md shadow-lg mt-1 max-h-60 overflow-auto">
+                <ul className="absolute z-10 w-full bg-surface border border-border-color rounded-md shadow-lg mt-1 max-h-60 overflow-auto">
                     {filteredOptions.map(option => (
                         <li
                             key={option}
                             onClick={() => handleSelect(option)}
-                            className="px-3 py-2 text-sm text-slate-700 cursor-pointer hover:bg-sky-100"
+                            className="px-3 py-2 text-sm text-text-secondary cursor-pointer hover:bg-surface-hover"
                         >
                             {option}
                         </li>
@@ -82,7 +81,7 @@ const CategoryCombobox = ({ value, onChange, options }) => {
                     {canCreateNew && (
                         <li
                             onClick={() => handleSelect(inputValue)}
-                            className="px-3 py-2 text-sm text-sky-600 font-semibold cursor-pointer hover:bg-sky-100"
+                            className="px-3 py-2 text-sm text-text-accent font-semibold cursor-pointer hover:bg-surface-hover"
                         >
                             Create new category: "{inputValue}"
                         </li>
@@ -207,8 +206,8 @@ const ScheduleForm = ({
             <div className="flex justify-between items-center mb-6 border-b border-border-color pb-4">
                 <h2 className="text-3xl font-semibold text-text-primary">{isEditing ? 'Edit Schedule' : 'Schedule a New Card'}</h2>
                 {isEditing && formData.active_card_id && (
-                    <div className="p-2 bg-surface-accent border border-sky-200 rounded-lg text-center">
-                        <a href={`https://trello.com/c/${formData.active_card_id}`} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-sky-800 hover:underline">
+                    <div className="p-2 bg-surface-accent border border-border-color rounded-lg text-center">
+                        <a href={`https://trello.com/c/${formData.active_card_id}`} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-text-on-accent hover:underline">
                             View Active Card
                         </a>
                     </div>
@@ -216,7 +215,7 @@ const ScheduleForm = ({
             </div>
             
             {warning && (
-                <div className="mb-6 p-4 bg-yellow-50 border border-yellow-300 text-yellow-800 rounded-lg" role="alert">
+                <div className="mb-6 p-4 bg-warning-surface border border-yellow-300 text-warning-text-on-surface rounded-lg" role="alert">
                     <p className="font-semibold">Attention Required</p>
                     <p>{warning}</p>
                 </div>
@@ -290,7 +289,7 @@ const ScheduleForm = ({
                                 <div className="mt-2 flex flex-wrap gap-2">
                                     {DAYS_OF_WEEK.map(day => (
                                         <label key={day.id} className="flex items-center space-x-2 cursor-pointer">
-                                            <input type="checkbox" name="weekly_day" value={day.id} checked={formData.frequency_details?.includes(day.id)} onChange={handleInputChange} className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"/>
+                                            <input type="checkbox" name="weekly_day" value={day.id} checked={formData.frequency_details?.includes(day.id)} onChange={handleInputChange} className="h-4 w-4 rounded border-border-color text-primary focus:ring-primary"/>
                                             <span>{day.name}</span>
                                         </label>
                                     ))}
@@ -340,7 +339,7 @@ const ScheduleForm = ({
 
                     <div className="p-4 border border-border-color rounded-lg space-y-4">
                          <div className="flex items-center">
-                            <input type="checkbox" id="showDates" name="showDates" checked={showDates} onChange={handleInputChange} className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
+                            <input type="checkbox" id="showDates" name="showDates" checked={showDates} onChange={handleInputChange} className="h-4 w-4 rounded border-border-color text-primary focus:ring-primary" />
                             <label htmlFor="showDates" className="ml-2 block text-sm text-text-primary">Set start & end date</label>
                         </div>
                         {showDates && (
@@ -363,7 +362,7 @@ const ScheduleForm = ({
                     <textarea name="description" rows="4" value={formData.description} onChange={handleInputChange} className="form-input" placeholder="Add details to the Trello card description..."></textarea>
                 </div>
 
-                {error && <p className="text-danger bg-danger-surface p-3 rounded-lg text-center">{error}</p>}
+                {error && <p className="text-danger-text bg-danger-surface p-3 rounded-lg text-center">{error}</p>}
 
                 <div className="flex items-center justify-between space-x-4 pt-4">
                     <div className="flex items-center space-x-4">
@@ -372,7 +371,7 @@ const ScheduleForm = ({
                                 type="button"
                                 onClick={() => onManualTrigger(formData.id)}
                                 disabled={triggeringId === formData.id}
-                                className="px-4 py-2.5 rounded-lg bg-success-surface text-success-text-on-surface font-semibold hover:bg-success-surface-hover disabled:bg-slate-200"
+                                className="px-4 py-2.5 rounded-lg bg-success-surface text-success-text-on-surface font-semibold hover:bg-success-surface-hover disabled:bg-disabled-surface disabled:text-disabled-text"
                             >
                                 {triggeringId === formData.id ? 'Creating...' : 'Create Card Now'}
                             </button>

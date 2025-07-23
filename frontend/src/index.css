@@ -1,7 +1,7 @@
 /**
  * @file frontend/src/index.css
- * @description Added new CSS variables for disabled button states and applied them
- * to the button component classes.
+ * @description This file contains the 508 compliant color themes. A new .form-label
+ * class has been added and .form-input has been updated to style placeholder text.
  */
 @tailwind base;
 @tailwind components;
@@ -9,67 +9,93 @@
 
 @layer base {
   :root {
-    /* Primary Colors (Blue) */
-    --color-primary: #3B82F6; /* blue-500 */
-    --color-primary-hover: #2563EB; /* blue-600 */
+    /* --- LIGHT THEME (508 Compliant) --- */
+    --color-primary: #2563EB; /* blue-600 */
+    --color-primary-hover: #1D4ED8; /* blue-700 */
     --color-primary-text: #ffffff; /* white */
-
-    /* Secondary/Muted Colors (Slate) */
     --color-secondary: #E2E8F0; /* slate-200 */
     --color-secondary-hover: #CBD5E1; /* slate-300 */
     --color-secondary-text: #1E293B; /* slate-800 */
-
-    /* Danger Colors (Red) */
     --color-danger: #DC2626; /* red-600 */
     --color-danger-hover: #B91C1C; /* red-700 */
     --color-danger-text: #b91c1c; /* red-700 */
     --color-danger-surface: #FEE2E2; /* red-100 */
-
-    /* Critical Colors (Dark Red) */
     --color-critical: #991B1B; /* red-800 */
     --color-critical-text: #FEF2F2; /* red-50 */
-
-    /* Warning Colors (Yellow) */
     --color-warning: #EAB308; /* yellow-500 */
     --color-warning-hover: #CA8A04; /* yellow-600 */
     --color-warning-text: #1E293B; /* slate-800 */
     --color-warning-surface: #FEF3C7; /* yellow-100 */
     --color-warning-surface-hover: #FDE68A; /* yellow-200 */
     --color-warning-text-on-surface: #92400E; /* yellow-800 */
-
-    /* Success Colors (Green) */
     --color-success: #16A34A; /* green-600 */
     --color-success-hover: #15803D; /* green-700 */
     --color-success-text: #ffffff; /* white */
     --color-success-surface: #D1FAE5; /* green-100 */
     --color-success-surface-hover: #A7F3D0; /* green-200 */
     --color-success-text-on-surface: #065F46; /* green-800 */
-
-    /* Info Colors (Sky) */
     --color-info: #0284C7; /* sky-600 */
     --color-info-surface: #E0F2FE; /* sky-100 */
     --color-info-text-on-surface: #0369A1; /* sky-800 */
-
-    /* Disabled State */
     --color-disabled-surface: #E2E8F0; /* slate-200 */
     --color-disabled-text: #94A3B8; /* slate-400 */
-    
-    /* Background & Surface Colors (Light Grays) */
     --color-background: #F1F5F9; /* slate-100 */
     --color-surface: #F8FAFC; /* slate-50 */
     --color-surface-hover: #E2E8F0; /* slate-200 */
     --color-surface-muted: #F1F5F9; /* slate-100 */
     --color-surface-accent: #DBEAFE; /* blue-100 */
-
-    /* Text Colors */
     --color-text-primary: #0F172A; /* slate-900 */
     --color-text-secondary: #475569; /* slate-600 */
-    --color-text-muted: #64748B; /* slate-500 */
-    --color-text-accent: #3B82F6; /* blue-500 */
+    --color-text-muted: #475569; /* slate-600 */
+    --color-text-accent: #2563EB; /* blue-600 */
     --color-text-inverted: #0F172A; /* slate-900 */
-    
-    /* Border Color */
+    --color-text-on-accent: #1E40AF; /* blue-800 */
     --color-border: #CBD5E1; /* slate-300 */
+  }
+
+  html.dark {
+    /* --- DARK THEME (508 Compliant) --- */
+    --color-primary: #2563EB; /* blue-600 */
+    --color-primary-hover: #1D4ED8; /* blue-700 */
+    --color-primary-text: #ffffff; /* white */
+    --color-secondary: #334155; /* slate-700 */
+    --color-secondary-hover: #475569; /* slate-600 */
+    --color-secondary-text: #F1F5F9; /* slate-100 */
+    --color-danger: #DC2626; /* red-600 */
+    --color-danger-hover: #B91C1C; /* red-700 */
+    --color-danger-text: #FEE2E2; /* red-100 */
+    --color-danger-surface: #450a0a; /* red-950 */
+    --color-critical: #991B1B; /* red-800 */
+    --color-critical-text: #FEF2F2; /* red-50 */
+    --color-warning: #EAB308; /* yellow-500 */
+    --color-warning-hover: #CA8A04; /* yellow-600 */
+    --color-warning-text: #1E293B; /* slate-800 */
+    --color-warning-surface: #713f12; /* yellow-900 */
+    --color-warning-surface-hover: #422006; /* yellow-950 */
+    --color-warning-text-on-surface: #fef3c7; /* yellow-100 */
+    --color-success: #16A34A; /* green-600 */
+    --color-success-hover: #15803D; /* green-700 */
+    --color-success-text: #ffffff; /* white */
+    --color-success-surface: #14532d; /* green-900 */
+    --color-success-surface-hover: #052e16; /* green-950 */
+    --color-success-text-on-surface: #d1fae5; /* green-100 */
+    --color-info: #0284C7; /* sky-600 */
+    --color-info-surface: #0c4a6e; /* sky-900 */
+    --color-info-text-on-surface: #e0f2fe; /* sky-100 */
+    --color-disabled-surface: #334155; /* slate-700 */
+    --color-disabled-text: #64748B; /* slate-500 */
+    --color-background: #0F172A; /* slate-900 */
+    --color-surface: #1E293B; /* slate-800 */
+    --color-surface-hover: #334155; /* slate-700 */
+    --color-surface-muted: #1E293B; /* slate-800 */
+    --color-surface-accent: #1E3A8A; /* blue-900 */
+    --color-text-primary: #F1F5F9; /* slate-100 */
+    --color-text-secondary: #94A3B8; /* slate-400 */
+    --color-text-muted: #94A3B8; /* slate-400 */
+    --color-text-accent: #2563EB; /* blue-600 */
+    --color-text-inverted: #0F172A; /* slate-900 */
+    --color-text-on-accent: #93C5FD; /* blue-300 */
+    --color-border: #334155; /* slate-700 */
   }
 
   html, body, #root {
@@ -82,8 +108,11 @@
 }
 
 @layer components {
+  .form-label {
+    @apply block text-sm font-medium text-text-secondary mb-1;
+  }
   .form-input {
-    @apply mt-1 block w-full px-4 py-2 bg-surface border border-slate-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 text-text-primary;
+    @apply mt-1 block w-full px-4 py-2 bg-surface border border-border-color rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 text-text-primary placeholder:text-text-muted;
   }
   .form-button-primary {
     @apply px-5 py-2 rounded-lg bg-primary text-primary-text font-semibold hover:bg-primary-hover shadow-md disabled:bg-disabled-surface disabled:text-disabled-text disabled:cursor-not-allowed;

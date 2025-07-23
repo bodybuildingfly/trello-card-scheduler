@@ -1,9 +1,10 @@
 /**
  * @file frontend/tailwind.config.js
- * @description This update adds new color definitions for disabled button states.
+ * @description This update adds a new 'text-on-accent' color for text on accent backgrounds.
  */
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+  darkMode: 'class',
   content: [
     "./src/**/*.{js,jsx,ts,tsx}",
   ],
@@ -57,6 +58,7 @@ module.exports = {
         'text-muted': 'var(--color-text-muted)',
         'text-accent': 'var(--color-text-accent)',
         'text-inverted': 'var(--color-text-inverted)',
+        'text-on-accent': 'var(--color-text-on-accent)',
 
         // Border color
         'border-color': 'var(--color-border)'

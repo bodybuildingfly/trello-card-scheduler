@@ -1,9 +1,10 @@
 /**
  * @file frontend/src/components/LoginPage.js
- * @description Refactored to use semantic color classes for the background and error message.
+ * @description This component has been fully updated to use the semantic color theme for all UI elements.
  */
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import ThemeToggle from './ThemeToggle';
 
 /**
  * @description A component that renders a login form.
@@ -38,7 +39,10 @@ const LoginPage = () => {
 
     return (
         <div className="bg-background min-h-screen flex items-center justify-center">
-            <div className="bg-surface p-8 rounded-2xl shadow-lg w-full max-w-md mx-4">
+            <div className="bg-surface p-8 rounded-2xl shadow-lg w-full max-w-md mx-4 relative">
+                <div className="absolute top-4 right-4">
+                    <ThemeToggle />
+                </div>
                 <h1 className="text-4xl font-bold text-text-primary text-center mb-2">Welcome Back</h1>
                 <p className="text-text-muted text-center mb-8">Please sign in to continue</p>
                 
@@ -78,7 +82,7 @@ const LoginPage = () => {
                         <button 
                             type="submit" 
                             disabled={isLoading} 
-                            className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-primary-text bg-primary hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:bg-sky-300"
+                            className="w-full form-button-primary py-3"
                         >
                             {isLoading ? 'Signing In...' : 'Sign In'}
                         </button>

@@ -1,7 +1,6 @@
 /**
  * @file frontend/src/App.js
- * @description This version restores the `h-screen` class to the aside element,
- * which fixes the layout issue and brings back the scrollbar for the schedule list.
+ * @description The ThemeToggle component has been added to the sidebar footer.
  */
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 
@@ -16,6 +15,7 @@ import ScheduleForm from './components/ScheduleForm';
 import ProtectedRoute from './components/ProtectedRoute';
 import UserManagementPage from './components/UserManagementPage';
 import DashboardPage from './components/DashboardPage';
+import ThemeToggle from './components/ThemeToggle'; // Import the new component
 
 // --- Service & Context Imports ---
 import apiClient from './api';
@@ -331,9 +331,15 @@ function App() {
                                 </button>
                             </nav>
                         )}
-                        <div className="text-center">
-                            <p className="text-sm text-text-secondary">Signed in as <span className="font-bold">{user?.username}</span></p>
-                            <button onClick={logout} className="text-sm text-text-accent hover:underline">Logout</button>
+                        <div className="grid grid-cols-3 items-center">
+                            <div />
+                            <div className="text-center">
+                                <p className="text-sm text-text-secondary">Signed in as <span className="font-bold">{user?.username}</span></p>
+                                <button onClick={logout} className="text-sm text-text-accent hover:underline">Logout</button>
+                            </div>
+                            <div className="flex justify-end">
+                                <ThemeToggle />
+                            </div>
                         </div>
                     </div>
                 </aside>
