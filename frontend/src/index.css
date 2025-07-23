@@ -1,9 +1,94 @@
+/**
+ * @file frontend/src/index.css
+ * @description Added new CSS variables for disabled button states and applied them
+ * to the button component classes.
+ */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  :root {
+    /* Primary Colors (Blue) */
+    --color-primary: #3B82F6; /* blue-500 */
+    --color-primary-hover: #2563EB; /* blue-600 */
+    --color-primary-text: #ffffff; /* white */
+
+    /* Secondary/Muted Colors (Slate) */
+    --color-secondary: #E2E8F0; /* slate-200 */
+    --color-secondary-hover: #CBD5E1; /* slate-300 */
+    --color-secondary-text: #1E293B; /* slate-800 */
+
+    /* Danger Colors (Red) */
+    --color-danger: #DC2626; /* red-600 */
+    --color-danger-hover: #B91C1C; /* red-700 */
+    --color-danger-text: #b91c1c; /* red-700 */
+    --color-danger-surface: #FEE2E2; /* red-100 */
+
+    /* Critical Colors (Dark Red) */
+    --color-critical: #991B1B; /* red-800 */
+    --color-critical-text: #FEF2F2; /* red-50 */
+
+    /* Warning Colors (Yellow) */
+    --color-warning: #EAB308; /* yellow-500 */
+    --color-warning-hover: #CA8A04; /* yellow-600 */
+    --color-warning-text: #1E293B; /* slate-800 */
+    --color-warning-surface: #FEF3C7; /* yellow-100 */
+    --color-warning-surface-hover: #FDE68A; /* yellow-200 */
+    --color-warning-text-on-surface: #92400E; /* yellow-800 */
+
+    /* Success Colors (Green) */
+    --color-success: #16A34A; /* green-600 */
+    --color-success-hover: #15803D; /* green-700 */
+    --color-success-text: #ffffff; /* white */
+    --color-success-surface: #D1FAE5; /* green-100 */
+    --color-success-surface-hover: #A7F3D0; /* green-200 */
+    --color-success-text-on-surface: #065F46; /* green-800 */
+
+    /* Info Colors (Sky) */
+    --color-info: #0284C7; /* sky-600 */
+    --color-info-surface: #E0F2FE; /* sky-100 */
+    --color-info-text-on-surface: #0369A1; /* sky-800 */
+
+    /* Disabled State */
+    --color-disabled-surface: #E2E8F0; /* slate-200 */
+    --color-disabled-text: #94A3B8; /* slate-400 */
+    
+    /* Background & Surface Colors (Light Grays) */
+    --color-background: #F1F5F9; /* slate-100 */
+    --color-surface: #F8FAFC; /* slate-50 */
+    --color-surface-hover: #E2E8F0; /* slate-200 */
+    --color-surface-muted: #F1F5F9; /* slate-100 */
+    --color-surface-accent: #DBEAFE; /* blue-100 */
+
+    /* Text Colors */
+    --color-text-primary: #0F172A; /* slate-900 */
+    --color-text-secondary: #475569; /* slate-600 */
+    --color-text-muted: #64748B; /* slate-500 */
+    --color-text-accent: #3B82F6; /* blue-500 */
+    --color-text-inverted: #0F172A; /* slate-900 */
+    
+    /* Border Color */
+    --color-border: #CBD5E1; /* slate-300 */
+  }
+
+  html, body, #root {
+    height: 100%;
+  }
+
+  body {
+    background-color: var(--color-background);
+  }
+}
+
 @layer components {
   .form-input {
-    @apply mt-1 block w-full px-4 py-2 bg-white border border-slate-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-all duration-200;
+    @apply mt-1 block w-full px-4 py-2 bg-surface border border-slate-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 text-text-primary;
+  }
+  .form-button-primary {
+    @apply px-5 py-2 rounded-lg bg-primary text-primary-text font-semibold hover:bg-primary-hover shadow-md disabled:bg-disabled-surface disabled:text-disabled-text disabled:cursor-not-allowed;
+  }
+  .form-button-secondary {
+    @apply px-5 py-2 rounded-lg bg-secondary text-secondary-text font-semibold hover:bg-secondary-hover shadow-md disabled:bg-disabled-surface disabled:text-disabled-text disabled:cursor-not-allowed;
   }
 }

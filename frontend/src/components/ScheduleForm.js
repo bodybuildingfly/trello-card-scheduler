@@ -1,3 +1,9 @@
+/**
+ * @file frontend/src/components/ScheduleForm.js
+ * @description This version fixes a bug where start and end dates were not correctly
+ * displayed after being saved. A helper function has been added to format the
+ * date from the API into the required YYYY-MM-DD format for the date input fields.
+ */
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import apiClient from '../api';
 
@@ -112,9 +118,27 @@ const ScheduleForm = ({
     const [warning, setWarning] = useState(''); // State for non-blocking warnings
     const formRef = useRef(null);
 
+    /**
+     * @description Formats a date string from the API (e.g., ISO string) into YYYY-MM-DD format.
+     * @param {string} dateString - The date string to format.
+     * @returns {string} The formatted date string or an empty string.
+     */
+    const formatDateForInput = (dateString) => {
+        if (!dateString) return '';
+        // The date from the DB is a full timestamp, e.g., "2025-07-23T04:00:00.000Z"
+        // The input[type="date"] needs "YYYY-MM-DD"
+        const date = new Date(dateString);
+        const year = date.getUTCFullYear();
+        const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(date.getUTCDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
     useEffect(() => {
         let dataToSet = { 
             ...initialData,
+            start_date: formatDateForInput(initialData.start_date),
+            end_date: formatDateForInput(initialData.end_date),
             frequency_interval: parseInt(initialData.frequency_interval, 10) || 1
         };
         setWarning(''); // Clear previous warnings
@@ -179,11 +203,11 @@ const ScheduleForm = ({
     const [yearlyMonth, yearlyDay] = (formData.frequency_details || '1-1').split('-');
 
     return (
-        <div ref={formRef} className="bg-white p-6 sm:p-8 rounded-2xl shadow-lg mb-10 max-w-4xl mx-auto">
-            <div className="flex justify-between items-center mb-6 border-b border-slate-200 pb-4">
-                <h2 className="text-3xl font-semibold text-slate-800">{isEditing ? 'Edit Schedule' : 'Schedule a New Card'}</h2>
+        <div ref={formRef} className="bg-surface p-6 sm:p-8 rounded-2xl shadow-lg mb-10 max-w-4xl mx-auto">
+            <div className="flex justify-between items-center mb-6 border-b border-border-color pb-4">
+                <h2 className="text-3xl font-semibold text-text-primary">{isEditing ? 'Edit Schedule' : 'Schedule a New Card'}</h2>
                 {isEditing && formData.active_card_id && (
-                    <div className="p-2 bg-sky-100 border border-sky-200 rounded-lg text-center">
+                    <div className="p-2 bg-surface-accent border border-sky-200 rounded-lg text-center">
                         <a href={`https://trello.com/c/${formData.active_card_id}`} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-sky-800 hover:underline">
                             View Active Card
                         </a>
@@ -201,11 +225,11 @@ const ScheduleForm = ({
             <form onSubmit={handleFormSubmit} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                        <label htmlFor="title" className="form-label">Card Title <span className="text-red-500">*</span></label>
+                        <label htmlFor="title" className="form-label">Card Title <span className="text-danger">*</span></label>
                         <input type="text" name="title" value={formData.title} onChange={handleInputChange} required className="form-input" placeholder="e.g., Review weekly metrics" />
                     </div>
                     <div>
-                        <label htmlFor="owner_name" className="form-label">Assign to Member <span className="text-red-500">*</span></label>
+                        <label htmlFor="owner_name" className="form-label">Assign to Member <span className="text-danger">*</span></label>
                         <select name="owner_name" id="owner_name" value={formData.owner_name} onChange={handleInputChange} required className="form-input">
                             <option value="" disabled>Select a Trello member</option>
                             {trelloMembers.map(member => <option key={member.id} value={member.fullName}>{member.fullName}</option>)}
@@ -238,13 +262,12 @@ const ScheduleForm = ({
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="p-4 border border-slate-200 rounded-lg space-y-4">
+                    <div className="p-4 border border-border-color rounded-lg space-y-4">
                         <h3 className="font-semibold text-lg">Frequency</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                                 <label htmlFor="frequency" className="form-label">Repeats</label>
                                 <select name="frequency" value={formData.frequency} onChange={handleInputChange} className="form-input">
-                                    <option value="once">Once</option>
                                     <option value="daily">Daily</option>
                                     <option value="weekly">Weekly</option>
                                     <option value="monthly">Monthly</option>
@@ -256,7 +279,7 @@ const ScheduleForm = ({
                                     <label htmlFor="frequency_interval" className="form-label">Repeat Every</label>
                                     <div className="flex items-center">
                                         <input type="number" name="frequency_interval" value={formData.frequency_interval} onChange={handleInputChange} min="1" className="form-input w-20 mr-2" />
-                                        <span className="text-slate-600">{formData.frequency}{formData.frequency_interval > 1 ? 's' : ''}</span>
+                                        <span className="text-text-secondary">{formData.frequency}{formData.frequency_interval > 1 ? 's' : ''}</span>
                                     </div>
                                 </div>
                             )}
@@ -267,7 +290,7 @@ const ScheduleForm = ({
                                 <div className="mt-2 flex flex-wrap gap-2">
                                     {DAYS_OF_WEEK.map(day => (
                                         <label key={day.id} className="flex items-center space-x-2 cursor-pointer">
-                                            <input type="checkbox" name="weekly_day" value={day.id} checked={formData.frequency_details?.includes(day.id)} onChange={handleInputChange} className="h-4 w-4 rounded border-gray-300 text-sky-600 focus:ring-sky-500"/>
+                                            <input type="checkbox" name="weekly_day" value={day.id} checked={formData.frequency_details?.includes(day.id)} onChange={handleInputChange} className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"/>
                                             <span>{day.name}</span>
                                         </label>
                                     ))}
@@ -315,10 +338,10 @@ const ScheduleForm = ({
                         )}
                     </div>
 
-                    <div className="p-4 border border-slate-200 rounded-lg space-y-4">
+                    <div className="p-4 border border-border-color rounded-lg space-y-4">
                          <div className="flex items-center">
-                            <input type="checkbox" id="showDates" name="showDates" checked={showDates} onChange={handleInputChange} className="h-4 w-4 rounded border-gray-300 text-sky-600 focus:ring-sky-500" />
-                            <label htmlFor="showDates" className="ml-2 block text-sm text-slate-900">Set start & end date</label>
+                            <input type="checkbox" id="showDates" name="showDates" checked={showDates} onChange={handleInputChange} className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
+                            <label htmlFor="showDates" className="ml-2 block text-sm text-text-primary">Set start & end date</label>
                         </div>
                         {showDates && (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -340,7 +363,7 @@ const ScheduleForm = ({
                     <textarea name="description" rows="4" value={formData.description} onChange={handleInputChange} className="form-input" placeholder="Add details to the Trello card description..."></textarea>
                 </div>
 
-                {error && <p className="text-red-600 bg-red-100 p-3 rounded-lg text-center">{error}</p>}
+                {error && <p className="text-danger bg-danger-surface p-3 rounded-lg text-center">{error}</p>}
 
                 <div className="flex items-center justify-between space-x-4 pt-4">
                     <div className="flex items-center space-x-4">
@@ -349,7 +372,7 @@ const ScheduleForm = ({
                                 type="button"
                                 onClick={() => onManualTrigger(formData.id)}
                                 disabled={triggeringId === formData.id}
-                                className="px-4 py-2.5 rounded-lg bg-green-100 text-green-800 font-semibold hover:bg-green-200 disabled:bg-slate-200"
+                                className="px-4 py-2.5 rounded-lg bg-success-surface text-success-text-on-surface font-semibold hover:bg-success-surface-hover disabled:bg-slate-200"
                             >
                                 {triggeringId === formData.id ? 'Creating...' : 'Create Card Now'}
                             </button>
@@ -358,15 +381,15 @@ const ScheduleForm = ({
                             <button
                                 type="button"
                                 onClick={handleToggleActive}
-                                className={`px-4 py-2.5 rounded-lg font-semibold ${formData.is_active ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200' : 'bg-slate-200 text-slate-800 hover:bg-slate-300'}`}
+                                className={`px-4 py-2.5 rounded-lg font-semibold ${formData.is_active ? 'bg-warning-surface text-warning-text-on-surface hover:bg-warning-surface-hover' : 'bg-secondary text-secondary-text hover:bg-secondary-hover'}`}
                             >
                                 {formData.is_active ? 'Disable' : 'Enable'}
                             </button>
                         )}
                     </div>
                     <div className="flex items-center space-x-4">
-                        <button type="button" onClick={onCancel} className="px-6 py-2.5 rounded-lg bg-slate-200 text-slate-800 font-semibold hover:bg-slate-300">Cancel</button>
-                        <button type="submit" disabled={isLoading} className="flex items-center justify-center px-6 py-2.5 rounded-lg bg-sky-600 text-white font-semibold hover:bg-sky-700 disabled:bg-sky-300 shadow-md">
+                        <button type="button" onClick={onCancel} className="form-button-secondary px-6 py-2.5">Cancel</button>
+                        <button type="submit" disabled={isLoading} className="form-button-primary flex items-center justify-center px-6 py-2.5">
                             {isLoading ? 'Saving...' : (isEditing ? 'Update Schedule' : 'Schedule Card')}
                         </button>
                     </div>

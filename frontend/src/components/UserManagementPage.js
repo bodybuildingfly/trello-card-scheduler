@@ -1,12 +1,16 @@
+/**
+ * @file frontend/src/components/UserManagementPage.js
+ * @description Refactored to use semantic color classes.
+ */
 import React, { useState, useEffect, useCallback } from 'react';
 import apiClient from '../api';
 import { useAuth } from '../context/AuthContext';
 
 // --- Helper Icon Imports ---
-const DeleteIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-500 hover:text-red-700"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>;
-const PlusIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
-const Spinner = () => <div className="flex justify-center items-center p-10"><div className="w-10 h-10 border-4 border-sky-500 border-t-transparent rounded-full animate-spin"></div></div>;
-const KeyIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-yellow-500 hover:text-yellow-700"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path></svg>;
+const DeleteIcon = () => <svg xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-danger hover:text-danger-hover"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>;
+const PlusIcon = () => <svg xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
+const Spinner = () => <div className="flex justify-center items-center p-10"><div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>;
+const KeyIcon = () => <svg xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-warning hover:text-warning-hover"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path></svg>;
 
 /**
  * @description A modal component to display the new temporary password to the admin.
@@ -14,16 +18,16 @@ const KeyIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height=
  */
 const PasswordResetModal = ({ username, tempPassword, onClose }) => (
     <div className="fixed inset-0 bg-slate-900 bg-opacity-60 backdrop-blur-sm flex justify-center items-center z-50">
-        <div className="bg-white rounded-xl p-8 shadow-2xl w-full max-w-md mx-4">
-            <h2 className="text-2xl font-bold mb-4 text-slate-800">Password Reset Successful</h2>
-            <p className="text-slate-600 mb-4">
-                The password for user <strong className="font-semibold text-slate-900">{username}</strong> has been reset.
+        <div className="bg-surface rounded-xl p-8 shadow-2xl w-full max-w-md mx-4">
+            <h2 className="text-2xl font-bold mb-4 text-text-primary">Password Reset Successful</h2>
+            <p className="text-text-secondary mb-4">
+                The password for user <strong className="font-semibold text-text-primary">{username}</strong> has been reset.
                 Please provide them with their new temporary password:
             </p>
-            <div className="bg-slate-100 p-4 rounded-lg text-center font-mono text-lg text-slate-800 mb-6">
+            <div className="bg-surface-muted p-4 rounded-lg text-center font-mono text-lg text-text-primary mb-6">
                 {tempPassword}
             </div>
-            <p className="text-xs text-red-600 text-center mb-8">
+            <p className="text-xs text-danger text-center mb-8">
                 This is the only time this password will be shown. Please copy it now.
             </p>
             <div className="flex justify-center">
@@ -145,8 +149,8 @@ const UserManagementPage = () => {
                 />
             )}
             <div className="max-w-5xl mx-auto space-y-8">
-                <div className="bg-white p-6 rounded-2xl shadow-lg">
-                    <h2 className="text-2xl font-semibold text-slate-800 mb-4">Add New User</h2>
+                <div className="bg-surface p-6 rounded-2xl shadow-lg">
+                    <h2 className="text-2xl font-semibold text-text-primary mb-4">Add New User</h2>
                     <form onSubmit={handleCreateUser} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                         <div className="md:col-span-1">
                             <label className="form-label">Username</label>
@@ -169,18 +173,18 @@ const UserManagementPage = () => {
                             </button>
                         </div>
                     </form>
-                    {error && <p className="text-red-600 mt-4 text-center">{error}</p>}
-                    {success && <p className="text-green-600 mt-4 text-center">{success}</p>}
+                    {error && <p className="text-danger mt-4 text-center">{error}</p>}
+                    {success && <p className="text-success mt-4 text-center">{success}</p>}
                 </div>
 
-                <div className="bg-white p-6 rounded-2xl shadow-lg">
-                    <h2 className="text-2xl font-semibold text-slate-800 mb-4">Existing Users</h2>
+                <div className="bg-surface p-6 rounded-2xl shadow-lg">
+                    <h2 className="text-2xl font-semibold text-text-primary mb-4">Existing Users</h2>
                     <div className="space-y-3">
                         {users.map(user => (
-                            <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-slate-50">
+                            <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-surface-hover">
                                 <div>
-                                    <p className="font-bold text-slate-800">{user.username}</p>
-                                    <p className="text-sm text-slate-500">Role: <span className="font-medium capitalize">{user.role}</span></p>
+                                    <p className="font-bold text-text-primary">{user.username}</p>
+                                    <p className="text-sm text-text-muted">Role: <span className="font-medium capitalize">{user.role}</span></p>
                                 </div>
                                 <div className="flex items-center space-x-2">
                                     {adminUser.username !== user.username && (

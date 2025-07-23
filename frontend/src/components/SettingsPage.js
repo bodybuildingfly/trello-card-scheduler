@@ -1,8 +1,12 @@
+/**
+ * @file frontend/src/components/SettingsPage.js
+ * @description Refactored to use semantic color classes.
+ */
 import React, { useState, useEffect } from 'react';
 import apiClient from '../api';
 
 // --- Helper Components ---
-const Spinner = () => <div className="flex justify-center items-center p-10"><div className="w-10 h-10 border-4 border-sky-500 border-t-transparent rounded-full animate-spin"></div></div>;
+const Spinner = () => <div className="flex justify-center items-center p-10"><div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>;
 
 /**
  * @description A page for administrators to configure application settings.
@@ -155,13 +159,13 @@ const SettingsPage = ({ onSettingsSaved }) => {
     if (isLoading) return <Spinner />;
 
     return (
-        <div className="bg-white p-6 rounded-2xl shadow-lg max-w-3xl mx-auto">
-            <h2 className="text-3xl font-semibold text-slate-800 mb-6">Application Settings</h2>
+        <div className="bg-surface p-6 rounded-2xl shadow-lg max-w-3xl mx-auto">
+            <h2 className="text-3xl font-semibold text-text-primary mb-6">Application Settings</h2>
             <form onSubmit={handleSubmit} className="space-y-8">
                 {/* --- Step 1: Credentials --- */}
                 <div className="p-4 border rounded-lg">
                     <h3 className="font-semibold text-lg mb-1">Step 1: Trello Credentials</h3>
-                    <p className="text-sm text-slate-500 mb-4">Securely connect to your Trello account.</p>
+                    <p className="text-sm text-text-muted mb-4">Securely connect to your Trello account.</p>
                     <div className="space-y-4">
                         <div>
                             <label className="form-label">Trello API Key</label>
@@ -172,7 +176,7 @@ const SettingsPage = ({ onSettingsSaved }) => {
                             <input type="password" value={apiToken} onChange={(e) => setApiToken(e.target.value)} className="form-input" placeholder={areCredentialsSaved ? 'Saved (update if needed)' : 'Enter your Trello API Token'} />
                         </div>
                         {testResult.message && (
-                            <div className={`p-3 rounded-lg text-center text-sm ${testResult.status === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                            <div className={`p-3 rounded-lg text-center text-sm ${testResult.status === 'success' ? 'bg-green-100 text-success-text' : 'bg-red-100 text-danger-text'}`}>
                                 {testResult.message}
                             </div>
                         )}
@@ -188,8 +192,8 @@ const SettingsPage = ({ onSettingsSaved }) => {
                 {/* --- Step 2: Board & List Selection --- */}
                 <div className={`p-4 border rounded-lg ${!areCredentialsSaved && 'opacity-50'}`}>
                     <h3 className="font-semibold text-lg mb-1">Step 2: Target Board and Lists</h3>
-                    <p className="text-sm text-slate-500 mb-4">Choose where to create and track cards.</p>
-                    {!areCredentialsSaved && <p className="text-center text-sm text-slate-500 p-4">Please save your credentials first.</p>}
+                    <p className="text-sm text-text-muted mb-4">Choose where to create and track cards.</p>
+                    {!areCredentialsSaved && <p className="text-center text-sm text-text-muted p-4">Please save your credentials first.</p>}
                     <div className={`space-y-4 ${!areCredentialsSaved && 'pointer-events-none'}`}>
                          <div>
                             <label htmlFor="TRELLO_BOARD_ID" className="form-label">Trello Board</label>
@@ -218,7 +222,7 @@ const SettingsPage = ({ onSettingsSaved }) => {
                 {/* --- Step 3: Scheduler Configuration --- */}
                 <div className="p-4 border rounded-lg">
                     <h3 className="font-semibold text-lg mb-1">Step 3: Scheduler Configuration</h3>
-                    <p className="text-sm text-slate-500 mb-4">Set the time of day for the scheduler to run.</p>
+                    <p className="text-sm text-text-muted mb-4">Set the time of day for the scheduler to run.</p>
                     <div className="space-y-4">
                         <div>
                             <label className="form-label">Daily Run Time</label>
@@ -254,8 +258,8 @@ const SettingsPage = ({ onSettingsSaved }) => {
                     </div>
                 </div>
 
-                {error && <p className="text-red-600 bg-red-100 p-3 rounded-lg text-center">{error}</p>}
-                {success && <p className="text-green-600 bg-green-100 p-3 rounded-lg text-center">{success}</p>}
+                {error && <p className="text-danger bg-red-100 p-3 rounded-lg text-center">{error}</p>}
+                {success && <p className="text-success bg-green-100 p-3 rounded-lg text-center">{success}</p>}
 
                 <div className="flex justify-end pt-4">
                     <button type="submit" disabled={!areCredentialsSaved} className="form-button-primary w-full sm:w-auto">

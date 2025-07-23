@@ -1,3 +1,7 @@
+/**
+ * @file frontend/src/components/LoginPage.js
+ * @description Refactored to use semantic color classes for the background and error message.
+ */
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 
@@ -33,10 +37,10 @@ const LoginPage = () => {
     };
 
     return (
-        <div className="bg-slate-100 min-h-screen flex items-center justify-center">
-            <div className="bg-white p-8 rounded-2xl shadow-lg w-full max-w-md mx-4">
-                <h1 className="text-4xl font-bold text-slate-900 text-center mb-2">Welcome Back</h1>
-                <p className="text-slate-500 text-center mb-8">Please sign in to continue</p>
+        <div className="bg-background min-h-screen flex items-center justify-center">
+            <div className="bg-surface p-8 rounded-2xl shadow-lg w-full max-w-md mx-4">
+                <h1 className="text-4xl font-bold text-text-primary text-center mb-2">Welcome Back</h1>
+                <p className="text-text-muted text-center mb-8">Please sign in to continue</p>
                 
                 <form onSubmit={handleSubmit} className="space-y-6">
                     <div>
@@ -65,7 +69,7 @@ const LoginPage = () => {
                     </div>
 
                     {error && (
-                        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg relative" role="alert">
+                        <div className="bg-danger-surface border border-danger text-danger-text px-4 py-3 rounded-lg relative" role="alert">
                             <span className="block sm:inline">{error}</span>
                         </div>
                     )}
@@ -74,7 +78,7 @@ const LoginPage = () => {
                         <button 
                             type="submit" 
                             disabled={isLoading} 
-                            className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-sky-600 hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 disabled:bg-sky-300"
+                            className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-primary-text bg-primary hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:bg-sky-300"
                         >
                             {isLoading ? 'Signing In...' : 'Sign In'}
                         </button>

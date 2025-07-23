@@ -1,3 +1,9 @@
+/**
+ * @file backend/controllers/schedulesController.js
+ * @description This is the updated schedules controller. The Zod validation schema
+ * has been modified to remove 'once' from the list of accepted values for the
+ * 'frequency' field, ensuring data integrity at the API level.
+ */
 import pool from '../db.js';
 import * as trelloService from '../services/trelloService.js';
 import { calculateNextDueDate } from '../services/schedulerService.js';
@@ -10,7 +16,7 @@ const scheduleSchema = z.object({
     owner_name: z.string().min(1, { message: "Owner is required." }),
     description: z.string().optional(),
     category: z.string().optional(),
-    frequency: z.enum(['once', 'daily', 'weekly', 'monthly', 'yearly']),
+    frequency: z.enum(['daily', 'weekly', 'monthly', 'yearly']),
     frequency_interval: z.number().int().positive().optional(),
     frequency_details: z.string().optional(),
     trigger_hour: z.string().optional(),

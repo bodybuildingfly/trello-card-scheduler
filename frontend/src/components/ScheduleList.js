@@ -1,10 +1,14 @@
+/**
+ * @file frontend/src/components/ScheduleList.js
+ * @description Refactored to use semantic color classes.
+ */
 import React from 'react';
 
 // --- Helper Icon Imports ---
-const DeleteIcon = () => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-slate-500 group-hover:text-red-700"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>;
-const CloneIcon = () => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-slate-500 group-hover:text-green-700"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>;
-const Spinner = () => <div className="flex justify-center items-center p-10"><div className="w-10 h-10 border-4 border-sky-500 border-t-transparent rounded-full animate-spin"></div></div>;
-const ChevronDownIcon = () => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><polyline points="6 9 12 15 18 9"></polyline></svg>;
+const DeleteIcon = () => <svg xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-text-muted group-hover:text-danger"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>;
+const CloneIcon = () => <svg xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-text-muted group-hover:text-success"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>;
+const Spinner = () => <div className="flex justify-center items-center p-10"><div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>;
+const ChevronDownIcon = () => <svg xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><polyline points="6 9 12 15 18 9"></polyline></svg>;
 const DAYS_OF_WEEK = [ { id: '1', name: 'Mon' }, { id: '2', name: 'Tue' }, { id: '3', name: 'Wed' }, { id: '4', name: 'Thu' }, { id: '5', name: 'Fri' }, { id: '6', name: 'Sat' }, { id: '0', name: 'Sun' }];
 const MONTHS_OF_YEAR = [ { id: '1', name: 'January' }, { id: '2', name: 'February' }, { id: '3', name: 'March' }, { id: '4', name: 'April' }, { id: '5', name: 'May' }, { id: '6', name: 'June' }, { id: '7', name: 'July' }, { id: '8', name: 'August' }, { id: '9', name: 'September' }, { id: '10', name: 'October' }, { id: '11', name: 'November' }, { id: '12', name: 'December' }];
 
@@ -32,15 +36,15 @@ const CategorySection = ({ categoryName, schedules, isCategoryExpanded, onToggle
         <div>
             <button 
                 onClick={() => onToggleCategory(categoryName)} 
-                className="w-full flex justify-between items-center text-left py-2 px-2 rounded-md hover:bg-slate-100"
+                className="w-full flex justify-between items-center text-left py-2 px-2 rounded-md hover:bg-surface-hover"
             >
-                <span className="font-bold text-slate-700">{categoryName} ({schedules.length})</span>
+                <span className="font-bold text-text-secondary">{categoryName} ({schedules.length})</span>
                 <span className={`transform transition-transform duration-200 ${isCategoryExpanded ? 'rotate-180' : 'rotate-0'}`}>
                     <ChevronDownIcon />
                 </span>
             </button>
             {isCategoryExpanded && (
-                <div className="pl-4 border-l-2 border-slate-200 ml-2">
+                <div className="pl-4 border-l-2 border-border-color ml-2">
                     {schedules.map(schedule => (
                         <ScheduleItem 
                             key={schedule.id} 
@@ -62,15 +66,15 @@ const ScheduleItem = ({ schedule, isExpanded, onItemSelect, triggeringId, onDele
     <div className={`py-2 group border-b border-slate-100 last:border-b-0 ${!schedule.is_active ? 'opacity-50' : ''}`}>
         <div className="flex items-start justify-between cursor-pointer" onClick={() => onItemSelect(schedule)}>
             <div>
-                <h3 className={`font-semibold transition-colors ${isExpanded ? 'text-sky-600' : 'text-slate-800 group-hover:text-sky-600'}`}>
+                <h3 className={`font-semibold transition-colors ${isExpanded ? 'text-text-accent' : 'text-text-primary group-hover:text-text-accent'}`}>
                     {schedule.title}
-                    {!schedule.is_active && <span className="ml-2 text-xs font-bold text-slate-500">(Disabled)</span>}
+                    {!schedule.is_active && <span className="ml-2 text-xs font-bold text-text-muted">(Disabled)</span>}
                 </h3>
-                <p className="text-sm text-slate-500 mt-1">Assignee: {schedule.owner_name}</p>
+                <p className="text-sm text-text-muted mt-1">Assignee: {schedule.owner_name}</p>
             </div>
             <div className="flex items-center space-x-1 flex-shrink-0 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button onClick={(e) => { e.stopPropagation(); onCloneClick(schedule.id); }} className="p-2 rounded-full hover:bg-slate-200" title="Clone Schedule"><CloneIcon /></button>
-                <button onClick={(e) => { e.stopPropagation(); onDeleteClick(schedule); }} className="p-2 rounded-full hover:bg-slate-200" title="Delete Schedule"><DeleteIcon /></button>
+                <button onClick={(e) => { e.stopPropagation(); onCloneClick(schedule.id); }} className="p-2 rounded-full hover:bg-secondary" title="Clone Schedule"><CloneIcon /></button>
+                <button onClick={(e) => { e.stopPropagation(); onDeleteClick(schedule); }} className="p-2 rounded-full hover:bg-secondary" title="Delete Schedule"><DeleteIcon /></button>
             </div>
         </div>
         {isExpanded && (

@@ -1,3 +1,8 @@
+/**
+ * @file frontend/src/App.js
+ * @description This version restores the `h-screen` class to the aside element,
+ * which fixes the layout issue and brings back the scrollbar for the schedule list.
+ */
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 
 // --- Component Imports ---
@@ -28,7 +33,7 @@ const DashboardIcon = () => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0
  * @description A placeholder component to display in the main content area.
  */
 const WelcomeScreen = () => (
-    <div className="flex flex-col items-center justify-center h-full text-center text-slate-500">
+    <div className="flex flex-col items-center justify-center h-full text-center text-text-muted">
         <h2 className="text-3xl font-bold mb-2">Trello Card Scheduler</h2>
         <p>Select a schedule on the left to view its details, or click "Schedule a New Card" to begin.</p>
     </div>
@@ -57,7 +62,7 @@ function App() {
     // Form-related state
     const [isEditing, setIsEditing] = useState(false);
     const [selectedScheduleId, setSelectedScheduleId] = useState(null);
-    const initialFormState = { title: '', owner_name: '', description: '', category: '', frequency: 'once', frequency_interval: 1, frequency_details: '1', start_date: '', end_date: '', trigger_hour: '09', trigger_minute: '00', trigger_ampm: 'am', trello_label_id: '', is_active: true };
+    const initialFormState = { title: '', owner_name: '', description: '', category: '', frequency: 'daily', frequency_interval: 1, frequency_details: '1', start_date: '', end_date: '', trigger_hour: '09', trigger_minute: '00', trigger_ampm: 'am', trello_label_id: '', is_active: true };
     const [formData, setFormData] = useState(initialFormState);
 
     // Modal-related state
@@ -235,7 +240,7 @@ function App() {
 
     return (
         <ProtectedRoute>
-            <div className="h-screen w-screen bg-slate-100 font-sans text-slate-800 grid grid-cols-12">
+            <div className="h-screen w-screen font-sans text-text-primary grid grid-cols-12">
                 {showDeleteModal && (
                     <ConfirmationModal 
                         message={`Are you sure you want to delete the schedule for "${scheduleToDelete?.title}"? This cannot be undone.`}
@@ -245,16 +250,16 @@ function App() {
                 )}
 
                 {/* --- Left Sidebar --- */}
-                <aside className="col-span-4 bg-white border-r border-slate-200 flex flex-col h-screen">
+                <aside className="col-span-4 bg-surface border-r border-border-color flex flex-col h-screen">
                     <div className="p-6 flex-shrink-0">
                         <div className="text-center mb-6">
-                            <h1 className="text-2xl font-bold text-slate-900">Trello Scheduler</h1>
+                            <h1 className="text-2xl font-bold text-text-primary">Trello Scheduler</h1>
                             {appVersion && (
                                 <a 
                                     href="https://github.com/bodybuildingfly/trello-card-scheduler" 
                                     target="_blank" 
                                     rel="noopener noreferrer"
-                                    className="text-xs text-slate-400 mt-1 hover:text-sky-600 hover:underline"
+                                    className="text-xs text-text-muted mt-1 hover:text-text-accent hover:underline"
                                 >
                                     Version {appVersion}
                                 </a>
@@ -265,7 +270,7 @@ function App() {
                             <button 
                                 onClick={() => { resetForm(); setActiveView('form'); }} 
                                 disabled={!isTrelloConfigured} 
-                                className="w-full flex items-center justify-center px-4 py-3 rounded-lg bg-sky-600 text-white font-semibold hover:bg-sky-700 shadow-md disabled:bg-slate-400 disabled:cursor-not-allowed"
+                                className="w-full flex items-center justify-center px-4 py-3 rounded-lg bg-primary text-primary-text font-semibold hover:bg-primary-hover shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 <PlusIcon /> <span className="ml-2">Schedule a New Card</span>
                             </button>
@@ -273,8 +278,8 @@ function App() {
                     </div>
 
                     <div className="px-6 pb-4 flex-shrink-0">
-                        <div className="p-4 bg-slate-50 rounded-lg">
-                            <h3 className="font-semibold text-slate-600 mb-2">Filters</h3>
+                        <div className="p-4 bg-surface-muted rounded-lg">
+                            <h3 className="font-semibold text-text-secondary mb-2">Filters</h3>
                             <div className="space-y-2">
                                 <input type="text" placeholder="Search by title..." value={filterTitle} onChange={e => setFilterTitle(e.target.value)} className="form-input" />
                                 <select value={filterOwner} onChange={e => setFilterOwner(e.target.value)} className="form-input">
@@ -287,7 +292,6 @@ function App() {
                                     <option value="weekly">Weekly</option>
                                     <option value="monthly">Monthly</option>
                                     <option value="yearly">Yearly</option>
-                                    <option value="once">Once</option>
                                 </select>
                             </div>
                         </div>
@@ -309,27 +313,27 @@ function App() {
                     </div>
 
                     {/* --- Admin & User Section --- */}
-                    <div className="p-6 flex-shrink-0 pt-6 border-t border-slate-200">
+                    <div className="p-6 flex-shrink-0 pt-6 border-t border-border-color">
                         {isAdmin && (
                             <nav className="space-y-2 mb-4">
-                                <p className="px-3 text-xs font-semibold uppercase text-slate-400">Admin</p>
-                                <button onClick={() => setActiveView('dashboard')} className={`w-full flex items-center px-3 py-2 text-slate-600 hover:bg-slate-100 rounded-md ${activeView === 'dashboard' && 'bg-slate-100 font-bold'}`}>
+                                <p className="px-3 text-xs font-semibold uppercase text-text-muted">Admin</p>
+                                <button onClick={() => setActiveView('dashboard')} className={`w-full flex items-center px-3 py-2 text-text-secondary hover:bg-surface-hover rounded-md ${activeView === 'dashboard' && 'bg-surface-hover font-bold'}`}>
                                     <DashboardIcon /> <span className="ml-3">Dashboard</span>
                                 </button>
-                                <button onClick={() => setActiveView('settings')} className={`w-full flex items-center px-3 py-2 text-slate-600 hover:bg-slate-100 rounded-md ${activeView === 'settings' && 'bg-slate-100 font-bold'}`}>
+                                <button onClick={() => setActiveView('settings')} className={`w-full flex items-center px-3 py-2 text-text-secondary hover:bg-surface-hover rounded-md ${activeView === 'settings' && 'bg-surface-hover font-bold'}`}>
                                     <SettingsIcon /> <span className="ml-3">Settings</span>
                                 </button>
-                                <button onClick={() => setActiveView('audit')} className={`w-full flex items-center px-3 py-2 text-slate-600 hover:bg-slate-100 rounded-md ${activeView === 'audit' && 'bg-slate-100 font-bold'}`}>
+                                <button onClick={() => setActiveView('audit')} className={`w-full flex items-center px-3 py-2 text-text-secondary hover:bg-surface-hover rounded-md ${activeView === 'audit' && 'bg-surface-hover font-bold'}`}>
                                     <AuditLogIcon /> <span className="ml-3">Audit Log</span>
                                 </button>
-                                <button onClick={() => setActiveView('users')} className={`w-full flex items-center px-3 py-2 text-slate-600 hover:bg-slate-100 rounded-md ${activeView === 'users' && 'bg-slate-100 font-bold'}`}>
+                                <button onClick={() => setActiveView('users')} className={`w-full flex items-center px-3 py-2 text-text-secondary hover:bg-surface-hover rounded-md ${activeView === 'users' && 'bg-surface-hover font-bold'}`}>
                                     <UsersIcon /> <span className="ml-3">User Management</span>
                                 </button>
                             </nav>
                         )}
                         <div className="text-center">
-                            <p className="text-sm text-slate-600">Signed in as <span className="font-bold">{user?.username}</span></p>
-                            <button onClick={logout} className="text-sm text-sky-600 hover:text-sky-800 hover:underline">Logout</button>
+                            <p className="text-sm text-text-secondary">Signed in as <span className="font-bold">{user?.username}</span></p>
+                            <button onClick={logout} className="text-sm text-text-accent hover:underline">Logout</button>
                         </div>
                     </div>
                 </aside>
@@ -337,7 +341,7 @@ function App() {
                 {/* --- Main Content Area --- */}
                 <main className="col-span-8 p-8 overflow-y-auto">
                     {(dataError || formError) && (
-                        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-lg mb-6" role="alert">
+                        <div className="bg-danger-surface border-l-4 border-danger text-danger-text p-4 rounded-lg mb-6" role="alert">
                             <p className="font-bold">An Error Occurred</p>
                             <p>{dataError || formError}</p>
                         </div>
