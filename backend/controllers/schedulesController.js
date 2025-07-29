@@ -1,8 +1,8 @@
 /**
  * @file backend/controllers/schedulesController.js
- * @description This is the updated schedules controller. The Zod validation schema
- * has been modified to remove 'once' from the list of accepted values for the
- * 'frequency' field, ensuring data integrity at the API level.
+ * @description This file has been updated to re-introduce the start and end
+ * date validation to the manual trigger function, ensuring consistency with
+ * the automated scheduler.
  */
 import pool from '../db.js';
 import * as trelloService from '../services/trelloService.js';
@@ -211,13 +211,43 @@ export const triggerSchedule = async (req, res) => {
             return res.status(403).json({ error: 'You are not authorized to trigger this schedule.' });
         }
         
-        const nextDueDate = calculateNextDueDate(schedule);
+        let lastDueDateForCalc = null;
+        if (schedule.active_card_id) {
+            try {
+                const activeCard = await trelloService.getTrelloCard(schedule.active_card_id, appSettings);
+                if (activeCard && !activeCard.closed && activeCard.idList !== appSettings.TRELLO_DONE_LIST_ID) {
+                    const conflictMessage = `Cannot create a new card. The previous card "${activeCard.name}" is still active.`;
+                    await logAuditEvent('INFO', `Manual trigger blocked for schedule ${id}.`, { reason: conflictMessage }, req.user);
+                    return res.status(409).json({ message: conflictMessage });
+                }
+                if (activeCard) {
+                    lastDueDateForCalc = new Date(activeCard.due);
+                }
+            } catch (error) {
+                await logAuditEvent('ERROR', `Could not verify status of active card ${schedule.active_card_id} during manual trigger. Proceeding with caution.`, { error: String(error) }, req.user);
+            }
+        }
+
+        const nextDueDate = calculateNextDueDate(schedule, lastDueDateForCalc);
+        
+        // Validate the calculated due date against the schedule's start and end dates.
+        const startDate = schedule.start_date ? new Date(schedule.start_date) : null;
+        const endDate = schedule.end_date ? new Date(schedule.end_date) : null;
+
+        if ((startDate && nextDueDate < startDate) || (endDate && nextDueDate > endDate)) {
+            const message = `Cannot create card. The next due date (${nextDueDate.toLocaleDateString()}) is outside the schedule's active range.`;
+            await logAuditEvent('INFO', `Manual trigger blocked for schedule ${id}.`, { reason: message }, req.user);
+            return res.status(400).json({ message });
+        }
         
         const newCard = await trelloService.createTrelloCard(schedule, nextDueDate, appSettings);
         
         if (newCard) {
             await logAuditEvent('INFO', `Manual card creation successful: "${newCard.name}"`, { schedule, newCard, dueDate: nextDueDate }, req.user);
-            await pool.query('UPDATE schedules SET active_card_id = $1, last_card_created_at = NOW(), needs_new_card = FALSE WHERE id = $2', [newCard.id, schedule.id]);
+            await pool.query(
+                'UPDATE schedules SET active_card_id = $1, last_card_created_at = NOW() WHERE id = $2', 
+                [newCard.id, schedule.id]
+            );
             res.status(201).json(newCard);
         } else {
             return res.status(400).json({ error: 'Failed to create Trello card. This may be due to a configuration issue (e.g., missing Trello member).' });
@@ -252,19 +282,18 @@ export const cloneSchedule = async (req, res) => {
             title: `${originalSchedule.title} (Copy)`,
             active_card_id: null,
             last_card_created_at: null,
-            needs_new_card: true,
         };
 
         const query = `
-            INSERT INTO schedules (title, owner_name, description, category, frequency, frequency_interval, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date, end_date, needs_new_card, trello_label_id) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) 
+            INSERT INTO schedules (title, owner_name, description, category, frequency, frequency_interval, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date, end_date, trello_label_id) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) 
             RETURNING *;
         `;
         const values = [
             newSchedule.title, newSchedule.owner_name, newSchedule.description, newSchedule.category, 
             newSchedule.frequency, newSchedule.frequency_interval, newSchedule.frequency_details, 
             newSchedule.trigger_hour, newSchedule.trigger_minute, newSchedule.trigger_ampm, 
-            newSchedule.start_date, newSchedule.end_date, newSchedule.needs_new_card, newSchedule.trello_label_id
+            newSchedule.start_date, newSchedule.end_date, newSchedule.trello_label_id
         ];
 
         const result = await pool.query(query, values);
