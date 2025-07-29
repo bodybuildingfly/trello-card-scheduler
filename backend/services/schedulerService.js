@@ -12,18 +12,19 @@ let cronJob;
  */
 export const calculateNextDueDate = (schedule) => {
     const { frequency, frequency_interval, frequency_details, trigger_hour, trigger_minute, trigger_ampm } = schedule;
-    
+
     const now = new Date();
-    let nextDate = new Date(); // Start with today
+    let nextDate = new Date(now.getTime()); // Start with a copy of the current date and time
 
     const interval = frequency_interval || 1;
     let hour = parseInt(trigger_hour, 10) || 9;
     if (trigger_ampm === 'pm' && hour !== 12) hour += 12;
     if (trigger_ampm === 'am' && hour === 12) hour = 0;
-    
-    // Set the target time for the calculated date
+
+    // Set the target time on our working date object
     nextDate.setHours(hour, parseInt(trigger_minute, 10) || 0, 0, 0);
 
+    // Define a function that advances the date to the next interval based on frequency.
     const advanceDate = () => {
         switch (frequency) {
             case 'daily':
@@ -33,7 +34,7 @@ export const calculateNextDueDate = (schedule) => {
                 const scheduledDays = (frequency_details || '').split(',').map(d => parseInt(d, 10));
                 if (scheduledDays.length > 0) {
                     let currentDay = nextDate.getDay();
-                    let daysToAdd = 1; // Start looking from tomorrow
+                    let daysToAdd = 1; // Start looking from the next day
                     while (daysToAdd <= 7) {
                         let nextDayIndex = (currentDay + daysToAdd) % 7;
                         if (scheduledDays.includes(nextDayIndex)) {
@@ -43,43 +44,29 @@ export const calculateNextDueDate = (schedule) => {
                         daysToAdd++;
                     }
                 }
-                // If no specific days or no valid day found in the next week, advance by the interval
+                // If no specific days or no valid day found in the next week, advance by the full week interval
                 nextDate.setDate(nextDate.getDate() + (7 * interval));
                 break;
             case 'monthly':
-                // If the target day has already passed this month, advance to the next month.
-                if (now.getDate() > parseInt(frequency_details, 10)) {
-                    nextDate.setMonth(nextDate.getMonth() + interval);
-                }
-                nextDate.setDate(parseInt(frequency_details, 10) || 1);
+                nextDate.setMonth(nextDate.getMonth() + interval);
                 break;
             case 'yearly':
-                const [month, day] = (frequency_details || '1-1').split('-').map(d => parseInt(d, 10));
-                nextDate.setMonth(month - 1, day);
-                // If the date has already passed this year, advance to the next year.
-                if (nextDate < now) {
-                    nextDate.setFullYear(nextDate.getFullYear() + interval);
-                }
-                break;
-            default:
-                nextDate = new Date(); // Fallback for 'once'
+                nextDate.setFullYear(nextDate.getFullYear() + interval);
                 break;
         }
     };
 
-    // --- NEW LOGIC TO FIX WEEKLY SCHEDULES ---
-    // First, check if today is a valid day for weekly schedules. If not, advance the date.
-    if (frequency === 'weekly') {
-        const scheduledDays = (frequency_details || '').split(',').map(d => parseInt(d, 10));
-        if (scheduledDays.length > 0 && !scheduledDays.includes(nextDate.getDay())) {
-            // If today is not a scheduled day, we must advance, regardless of the time.
-            advanceDate();
-        }
+    // --- Core Logic ---
+    // First, align the date to the correct calendar day based on the frequency rules.
+    if (frequency === 'monthly') {
+        nextDate.setDate(parseInt(frequency_details, 10) || 1);
+    } else if (frequency === 'yearly') {
+        const [month, day] = (frequency_details || '1-1').split('-').map(d => parseInt(d, 10));
+        nextDate.setFullYear(nextDate.getFullYear(), month - 1, day);
     }
-
-    // --- SAFETY NET ---
-    // If the calculated date is still in the past (e.g., it's 2 PM and the schedule was for 1 PM today),
-    // this loop will advance the date to the next valid interval.
+    
+    // Now that the date is aligned, check if it's in the past. If so, advance it.
+    // This loop handles all cases, including daily schedules and advancing monthly/yearly schedules.
     let safetyCounter = 0;
     while (nextDate <= now && safetyCounter < 1000) {
         advanceDate();
@@ -88,6 +75,7 @@ export const calculateNextDueDate = (schedule) => {
 
     return nextDate;
 };
+
 
 /**
  * @description The main logic that runs on a schedule to check for and create Trello cards.

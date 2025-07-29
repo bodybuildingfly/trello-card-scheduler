@@ -1,6 +1,6 @@
 /**
  * @file frontend/src/App.js
- * @description The ThemeToggle component has been added to the sidebar footer.
+ * @description The ThemeToggle component has been added to the sidebar footer. The form submission logic has been updated to keep the form open on successful edits.
  */
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 
@@ -148,13 +148,21 @@ function App() {
             ...submittedFormData,
             frequency_interval: parseInt(submittedFormData.frequency_interval, 10)
           };
-    
-          await apiClient[isEditing ? 'put' : 'post'](
-              isEditing ? `/api/schedules/${selectedScheduleId}` : '/api/schedules',
-              dataToSubmit
-          );
-          await loadAllData();
-          resetForm(true);
+      
+          if (isEditing) {
+            const { data: updatedSchedule } = await apiClient.put(
+                `/api/schedules/${selectedScheduleId}`,
+                dataToSubmit
+            );
+            await loadAllData(); // Refresh sidebar list
+            // Update the form with the newly saved data to keep it open
+            setFormData({ ...initialFormState, ...updatedSchedule });
+          } else {
+            // For creating a new schedule, clear the form and close it
+            await apiClient.post('/api/schedules', dataToSubmit);
+            await loadAllData();
+            resetForm(true);
+          }
         } catch (err) {
             if (err.response?.data?.errors) {
                 const formattedErrors = err.response.data.errors.map(e => e.message).join(' ');

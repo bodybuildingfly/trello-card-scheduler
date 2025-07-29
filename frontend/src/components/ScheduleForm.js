@@ -1,7 +1,8 @@
 /**
  * @file frontend/src/components/ScheduleForm.js
- * @description This version has been updated to use the new `text-on-accent` theme
- * color for the 'View Active Card' link for better visibility in dark mode.
+ * @description This version has been updated to ensure that trigger_hour and
+ * trigger_minute are always treated as strings within the form's state to prevent
+ * validation errors caused by data type mismatches.
  */
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import apiClient from '../api';
@@ -138,7 +139,10 @@ const ScheduleForm = ({
             ...initialData,
             start_date: formatDateForInput(initialData.start_date),
             end_date: formatDateForInput(initialData.end_date),
-            frequency_interval: parseInt(initialData.frequency_interval, 10) || 1
+            frequency_interval: parseInt(initialData.frequency_interval, 10) || 1,
+            // Ensure time components are strings for the form state to prevent validation errors.
+            trigger_hour: String(initialData.trigger_hour || '09').padStart(2, '0'),
+            trigger_minute: String(initialData.trigger_minute || '00').padStart(2, '0'),
         };
         setWarning(''); // Clear previous warnings
 
