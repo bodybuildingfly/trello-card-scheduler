@@ -64,9 +64,9 @@ export const createTrelloCard = async (schedule, dueDate, appSettings) => {
         due: dueDate.toISOString()
     };
 
-    // Use the label ID from the individual schedule object if it exists.
-    if (schedule.trello_label_id) {
-        cardData.idLabels = [schedule.trello_label_id];
+    // Use the label IDs from the individual schedule object if it exists.
+    if (schedule.trello_label_ids && schedule.trello_label_ids.length > 0) {
+        cardData.idLabels = schedule.trello_label_ids.join(',');
     }
 
     const url = `https://api.trello.com/1/cards?key=${TRELLO_API_KEY}&token=${TRELLO_API_TOKEN}`;
