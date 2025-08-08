@@ -1,6 +1,7 @@
 /**
  * @file frontend/src/App.js
- * @description The ThemeToggle component has been added to the sidebar footer. The form submission logic has been updated to keep the form open on successful edits.
+ * @description The initialFormState has been updated to use `trello_label_ids` as an array
+ * to support the new multi-select label functionality.
  */
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 
@@ -62,7 +63,7 @@ function App() {
     // Form-related state
     const [isEditing, setIsEditing] = useState(false);
     const [selectedScheduleId, setSelectedScheduleId] = useState(null);
-    const initialFormState = { title: '', owner_name: '', description: '', category: '', frequency: 'daily', frequency_interval: 1, frequency_details: '1', start_date: '', end_date: '', trigger_hour: '09', trigger_minute: '00', trigger_ampm: 'am', trello_label_id: '', is_active: true };
+    const initialFormState = { title: '', owner_name: '', description: '', category: '', frequency: 'daily', frequency_interval: 1, frequency_details: '1', start_date: '', end_date: '', trigger_hour: '09', trigger_minute: '00', trigger_ampm: 'am', trello_label_ids: [], is_active: true };
     const [formData, setFormData] = useState(initialFormState);
 
     // Modal-related state

@@ -1,11 +1,9 @@
 /**
  * @file frontend/src/components/ScheduleForm.js
- * @description This version has been updated to ensure that trigger_hour and
- * trigger_minute are always treated as strings within the form's state to prevent
- * validation errors caused by data type mismatches.
+ * @description This version has been updated to display the names of selected Trello labels
+ * in the multi-select dropdown, improving the user experience.
  */
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import apiClient from '../api';
 
 // --- Helper Data (Specific to this form) ---
 const DAYS_OF_WEEK = [ { id: '1', name: 'Mon' }, { id: '2', name: 'Tue' }, { id: '3', name: 'Wed' }, { id: '4', name: 'Thu' }, { id: '5', name: 'Fri' }, { id: '6', name: 'Sat' }, { id: '0', name: 'Sun' }];
@@ -93,6 +91,68 @@ const CategoryCombobox = ({ value, onChange, options }) => {
     );
 };
 
+/**
+ * @description A multi-select dropdown component for Trello labels.
+ * @param {object} props - The component props.
+ */
+const MultiSelectDropdown = ({ options, selectedIds, onChange }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const wrapperRef = useRef(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const handleSelect = (labelId) => {
+        const newSelectedIds = selectedIds.includes(labelId)
+            ? selectedIds.filter(id => id !== labelId)
+            : [...selectedIds, labelId];
+        onChange(newSelectedIds);
+    };
+
+    const selectedLabels = options.filter(opt => selectedIds.includes(opt.id));
+
+    return (
+        <div className="relative" ref={wrapperRef}>
+            <button
+                type="button"
+                onClick={() => setIsOpen(!isOpen)}
+                className="form-input text-left w-full flex justify-between items-center"
+            >
+                <span className={`truncate ${selectedLabels.length === 0 ? 'text-text-muted' : ''}`}>
+                    {selectedLabels.length > 0 ? selectedLabels.map(l => l.name).join(', ') : 'Select labels...'}
+                </span>
+                <svg className="w-4 h-4 ml-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+            </button>
+            {isOpen && (
+                <ul className="absolute z-10 w-full bg-surface border border-border-color rounded-md shadow-lg mt-1 max-h-60 overflow-auto">
+                    {options.map(option => (
+                        <li
+                            key={option.id}
+                            onClick={() => handleSelect(option.id)}
+                            className="px-3 py-2 text-sm text-text-secondary cursor-pointer hover:bg-surface-hover flex items-center"
+                        >
+                            <input
+                                type="checkbox"
+                                checked={selectedIds.includes(option.id)}
+                                readOnly
+                                className="h-4 w-4 rounded border-border-color text-primary focus:ring-primary mr-3"
+                            />
+                            {option.name}
+                        </li>
+                    ))}
+                </ul>
+            )}
+        </div>
+    );
+};
+
 
 /**
  * @description A form for creating and editing scheduled Trello cards.
@@ -125,8 +185,6 @@ const ScheduleForm = ({
      */
     const formatDateForInput = (dateString) => {
         if (!dateString) return '';
-        // The date from the DB is a full timestamp, e.g., "2025-07-23T04:00:00.000Z"
-        // The input[type="date"] needs "YYYY-MM-DD"
         const date = new Date(dateString);
         const year = date.getUTCFullYear();
         const month = String(date.getUTCMonth() + 1).padStart(2, '0');
@@ -140,18 +198,16 @@ const ScheduleForm = ({
             start_date: formatDateForInput(initialData.start_date),
             end_date: formatDateForInput(initialData.end_date),
             frequency_interval: parseInt(initialData.frequency_interval, 10) || 1,
-            // Ensure time components are strings for the form state to prevent validation errors.
             trigger_hour: String(initialData.trigger_hour || '09').padStart(2, '0'),
             trigger_minute: String(initialData.trigger_minute || '00').padStart(2, '0'),
+            trello_label_ids: initialData.trello_label_ids || [],
         };
-        setWarning(''); // Clear previous warnings
+        setWarning('');
 
-        // Check for orphaned schedules when editing
         if (isEditing && initialData.owner_name && trelloMembers.length > 0) {
             const ownerExists = trelloMembers.some(member => member.fullName === initialData.owner_name);
             if (!ownerExists) {
                 setWarning(`Warning: The previously assigned user "${initialData.owner_name}" is no longer a member of this Trello board. Please select a new assignee.`);
-                // Clear the invalid owner from the form data
                 dataToSet.owner_name = '';
             }
         }
@@ -250,17 +306,12 @@ const ScheduleForm = ({
                         />
                     </div>
                     <div>
-                        <label htmlFor="trello_label_id" className="form-label">Trello Label</label>
-                        <select 
-                            name="trello_label_id" 
-                            id="trello_label_id" 
-                            value={formData.trello_label_id || ''} 
-                            onChange={handleInputChange} 
-                            className="form-input"
-                        >
-                            <option value="">None</option>
-                            {trelloLabels.map(label => <option key={label.id} value={label.id}>{label.name}</option>)}
-                        </select>
+                        <label htmlFor="trello_label_ids" className="form-label">Trello Labels</label>
+                        <MultiSelectDropdown
+                            options={trelloLabels}
+                            selectedIds={formData.trello_label_ids || []}
+                            onChange={(newIds) => setFormData(prev => ({ ...prev, trello_label_ids: newIds }))}
+                        />
                     </div>
                 </div>
                 
