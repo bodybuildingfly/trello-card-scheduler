@@ -30,7 +30,15 @@ export const calculateNextDueDate = (schedule, lastDueDate, now = new Date()) =>
                 nextDate.setDate(nextDate.getDate() + interval);
                 break;
             case 'weekly':
-                nextDate.setDate(nextDate.getDate() + (7 * interval));
+                const scheduledDays = (frequency_details || '').split(',').map(d => parseInt(d, 10));
+                // Check if lastDueDate is the last selected day of the week
+                if (nextDate.getDay() === scheduledDays[scheduledDays.length-1]) {
+                    // Move to the beginning of the next weekly interval
+                    nextDate.setDate(nextDate.getDate() + (7 - nextDate.getDay()) + (7 * (interval - 1)));
+                } else {
+                    // Let the weekly frequency logic further below move to the next day of the current week
+                    nextDate.setDate(nextDate.getDate() + 1);
+                }
                 break;
             case 'monthly':
                 nextDate.setMonth(nextDate.getMonth() + interval);
