@@ -3,7 +3,7 @@
  * @description Refactored to use semantic color classes for all log level indicators,
  * including the new "CRITICAL" level.
  */
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import apiClient from '../api';
 
 // --- Helper Components ---
@@ -20,38 +20,42 @@ const AuditLogViewer = () => {
     const [expandedLogId, setExpandedLogId] = useState(null);
     const [filterLevel, setFilterLevel] = useState('all');
     const [filterText, setFilterText] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalLogs, setTotalLogs] = useState(0);
+    const logsPerPage = 20;
+    const totalPages = Math.ceil(totalLogs / logsPerPage);
 
     /**
      * @description Fetches the audit logs from the server. Wrapped in useCallback
      * so it can be used in useEffect and attached to a button without causing re-renders.
      */
-    const fetchLogs = useCallback(async () => {
+    const fetchLogs = useCallback(async (page, level, text) => {
         setLoading(true);
         try {
-            const res = await apiClient.get('/api/audit-logs');
-            setLogs(res.data);
+            const res = await apiClient.get('/api/audit-logs', {
+                params: { page, limit: logsPerPage, filterLevel: level, filterText: text }
+            });
+            setLogs(res.data.logs);
+            setTotalLogs(res.data.totalCount);
         } catch (error) {
             console.error("Failed to fetch audit logs", error);
         }
         setLoading(false);
-    }, []);
+    }, [logsPerPage]);
 
     useEffect(() => {
-        fetchLogs();
-    }, [fetchLogs]);
+        fetchLogs(currentPage, filterLevel, filterText);
+    }, [currentPage, filterLevel, filterText, fetchLogs]);
 
-    /**
-     * @description Memoized computation to filter logs based on user-selected criteria.
-     */
-    const filteredLogs = useMemo(() => {
-        return logs.filter(log => {
-            const levelMatch = filterLevel === 'all' || log.level.toLowerCase() === filterLevel;
-            const textMatch = filterText === '' || 
-                              log.message.toLowerCase().includes(filterText.toLowerCase()) ||
-                              (log.username && log.username.toLowerCase().includes(filterText.toLowerCase()));
-            return levelMatch && textMatch;
-        });
-    }, [logs, filterLevel, filterText]);
+    const handleFilterLevelChange = (e) => {
+        setFilterLevel(e.target.value);
+        setCurrentPage(1);
+    };
+
+    const handleFilterTextChange = (e) => {
+        setFilterText(e.target.value);
+        setCurrentPage(1);
+    };
 
     /**
      * @description Returns the appropriate Tailwind CSS classes for a given log level.
@@ -125,7 +129,7 @@ const AuditLogViewer = () => {
             <div className="flex justify-between items-center mb-6">
                 <h2 className="text-3xl font-semibold text-text-primary">Audit Log</h2>
                 <button 
-                    onClick={fetchLogs} 
+                    onClick={() => fetchLogs(currentPage, filterLevel, filterText)}
                     disabled={loading}
                     className="px-4 py-2 text-sm rounded-lg bg-surface-muted text-text-secondary font-semibold hover:bg-surface-hover disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed"
                 >
@@ -137,10 +141,10 @@ const AuditLogViewer = () => {
                     type="text"
                     placeholder="Search messages or users..."
                     value={filterText}
-                    onChange={(e) => setFilterText(e.target.value)}
+                    onChange={handleFilterTextChange}
                     className="form-input"
                 />
-                <select value={filterLevel} onChange={(e) => setFilterLevel(e.target.value)} className="form-input">
+                <select value={filterLevel} onChange={handleFilterLevelChange} className="form-input">
                     <option value="all">All Levels</option>
                     <option value="info">INFO</option>
                     <option value="error">ERROR</option>
@@ -149,7 +153,7 @@ const AuditLogViewer = () => {
             </div>
             {loading ? <Spinner /> : (
                 <div className="space-y-3 max-h-[60vh] overflow-y-auto">
-                    {filteredLogs.map(log => (
+                    {logs.map(log => (
                         <div key={log.id} className="p-3 border rounded-lg font-mono text-sm cursor-pointer hover:bg-surface-hover" onClick={() => toggleLogExpansion(log.id)}>
                             <div className="flex items-center justify-between flex-wrap gap-2">
                                 <div className="flex items-center">
@@ -174,6 +178,23 @@ const AuditLogViewer = () => {
                     ))}
                 </div>
             )}
+            <div className="flex justify-between items-center mt-6">
+                <button
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1 || loading}
+                    className="px-4 py-2 text-sm rounded-lg bg-surface-muted text-text-secondary font-semibold hover:bg-surface-hover disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed"
+                >
+                    Previous
+                </button>
+                <span className="text-sm text-text-muted">Page {currentPage} of {totalPages}</span>
+                <button
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages || loading}
+                    className="px-4 py-2 text-sm rounded-lg bg-surface-muted text-text-secondary font-semibold hover:bg-surface-hover disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed"
+                >
+                    Next
+                </button>
+            </div>
         </div>
     );
 };
