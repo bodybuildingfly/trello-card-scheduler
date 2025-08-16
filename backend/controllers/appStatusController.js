@@ -22,14 +22,53 @@ export const getAppVersion = (req, res) => {
 };
 
 /**
- * @description Fetches the 100 most recent audit log entries.
+ * @description Fetches audit log entries with pagination and filtering.
  * @param {object} req - The Express request object.
  * @param {object} res - The Express response object.
  */
 export const getAuditLogs = async (req, res) => {
+    const { page = 1, limit = 20, filterLevel = 'all', filterText = '' } = req.query;
+    const offset = (page - 1) * limit;
+
+    let query = 'SELECT * FROM audit_logs';
+    let countQuery = 'SELECT COUNT(*) FROM audit_logs';
+    const params = [];
+    const countParams = [];
+
+    let whereClause = '';
+    if (filterLevel !== 'all') {
+        whereClause += (whereClause ? ' AND ' : ' WHERE ') + `level = $${params.length + 1}`;
+        params.push(filterLevel.toUpperCase());
+    }
+
+    if (filterText) {
+        whereClause += (whereClause ? ' AND ' : ' WHERE ') + `(message ILIKE $${params.length + 1} OR username ILIKE $${params.length + 1})`;
+        params.push(`%${filterText}%`);
+    }
+
+    if (whereClause) {
+        query += whereClause;
+        countQuery += whereClause.replace(/\$\d+/g, (match) => {
+            const paramIndex = parseInt(match.substring(1)) - 1;
+            if (countParams.includes(params[paramIndex])) {
+                return `$${countParams.indexOf(params[paramIndex]) + 1}`;
+            }
+            countParams.push(params[paramIndex]);
+            return `$${countParams.length}`;
+        });
+    }
+
+    query += ` ORDER BY timestamp DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+    params.push(limit, offset);
+
     try {
-        const result = await pool.query('SELECT * FROM audit_logs ORDER BY timestamp DESC LIMIT 100');
-        res.status(200).json(result.rows);
+        const logsResult = await pool.query(query, params);
+        const countResult = await pool.query(countQuery, countParams);
+
+        res.status(200).json({
+            logs: logsResult.rows,
+            totalCount: parseInt(countResult.rows[0].count, 10)
+        });
     } catch (err) {
         await logAuditEvent('ERROR', 'Failed to fetch audit logs.', { error: String(err) }, req.user);
         res.status(500).json({ error: 'Internal server error' });
