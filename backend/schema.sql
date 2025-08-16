@@ -39,8 +39,20 @@ CREATE TABLE IF NOT EXISTS schedules (
     end_date DATE,
     active_card_id VARCHAR(255),
     last_card_created_at TIMESTAMP WITH TIME ZONE,
-    needs_new_card BOOLEAN DEFAULT TRUE,
-    trello_label_ids TEXT[] DEFAULT ARRAY[]::TEXT[]
+    trello_label_ids TEXT[] DEFAULT ARRAY[]::TEXT[],
+    checklist_name VARCHAR(255),
+    needs_new_card BOOLEAN DEFAULT TRUE
+);
+
+
+-- =============================================================================
+-- Table: checklist_items
+-- Description: Stores the individual items for a checklist associated with a schedule.
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS checklist_items (
+    id SERIAL PRIMARY KEY,
+    schedule_id INTEGER NOT NULL REFERENCES schedules(id) ON DELETE CASCADE,
+    item_name VARCHAR(255) NOT NULL
 );
 
 

@@ -91,6 +91,66 @@ const CategoryCombobox = ({ value, onChange, options }) => {
     );
 };
 
+const ChecklistManager = ({ items, name, onNameChange, onItemsChange }) => {
+    const handleItemChange = (index, field, value) => {
+        const newItems = [...items];
+        newItems[index] = { ...newItems[index], [field]: value };
+        onItemsChange(newItems);
+    };
+
+    const handleAddItem = () => {
+        onItemsChange([...items, { item_name: ''}]);
+    };
+
+    const handleRemoveItem = (index) => {
+        const newItems = items.filter((_, i) => i !== index);
+        onItemsChange(newItems);
+    };
+
+    return (
+        <div className="space-y-4">
+            <div>
+                <label htmlFor="checklist_name" className="form-label">Checklist Name</label>
+                <input
+                    type="text"
+                    id="checklist_name"
+                    name="checklist_name"
+                    value={name}
+                    onChange={onNameChange}
+                    className="form-input"
+                    placeholder="e.g., To-Do"
+                />
+            </div>
+            <h4 className="font-semibold text-text-secondary">Items</h4>
+            {items.map((item, index) => (
+                <div key={index} className="flex items-center gap-4">
+                    <input
+                        type="text"
+                        value={item.item_name}
+                        onChange={(e) => handleItemChange(index, 'item_name', e.target.value)}
+                        className="form-input flex-grow"
+                        placeholder="Enter item name"
+                    />
+                    <button
+                        type="button"
+                        onClick={() => handleRemoveItem(index)}
+                        className="text-danger hover:text-danger-hover"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                    </button>
+                </div>
+            ))}
+            <button
+                type="button"
+                onClick={handleAddItem}
+                className="form-button-secondary text-sm"
+            >
+                Add Item
+            </button>
+        </div>
+    );
+};
+
 /**
  * @description A multi-select dropdown component for Trello labels.
  * @param {object} props - The component props.
@@ -176,6 +236,7 @@ const ScheduleForm = ({
     const [showDates, setShowDates] = useState(!!(initialData.start_date || initialData.end_date));
     const [error, setError] = useState('');
     const [warning, setWarning] = useState(''); // State for non-blocking warnings
+    const [activeTab, setActiveTab] = useState('main');
     const formRef = useRef(null);
 
     /**
@@ -281,141 +342,173 @@ const ScheduleForm = ({
                 </div>
             )}
 
-            <form onSubmit={handleFormSubmit} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label htmlFor="title" className="form-label">Card Title <span className="text-danger">*</span></label>
-                        <input type="text" name="title" value={formData.title} onChange={handleInputChange} required className="form-input" placeholder="e.g., Review weekly metrics" />
-                    </div>
-                    <div>
-                        <label htmlFor="owner_name" className="form-label">Assign to Member <span className="text-danger">*</span></label>
-                        <select name="owner_name" id="owner_name" value={formData.owner_name} onChange={handleInputChange} required className="form-input">
-                            <option value="" disabled>Select a Trello member</option>
-                            {trelloMembers.map(member => <option key={member.id} value={member.fullName}>{member.fullName}</option>)}
-                        </select>
-                    </div>
-                </div>
+            <div className="border-b border-border-color mb-6">
+                <nav className="-mb-px flex space-x-6" aria-label="Tabs">
+                    <button
+                        onClick={() => setActiveTab('main')}
+                        className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-base ${activeTab === 'main' ? 'border-primary text-primary' : 'border-transparent text-text-muted hover:text-text-primary hover:border-gray-300'}`}
+                    >
+                        Schedule Details
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('checklist')}
+                        className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-base ${activeTab === 'checklist' ? 'border-primary text-primary' : 'border-transparent text-text-muted hover:text-text-primary hover:border-gray-300'}`}
+                    >
+                        Checklist
+                    </button>
+                </nav>
+            </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label htmlFor="category" className="form-label">Category</label>
-                        <CategoryCombobox 
-                            value={formData.category}
-                            onChange={(newCategory) => setFormData(prev => ({ ...prev, category: newCategory }))}
-                            options={categories}
-                        />
-                    </div>
-                    <div>
-                        <label htmlFor="trello_label_ids" className="form-label">Trello Labels</label>
-                        <MultiSelectDropdown
-                            options={trelloLabels}
-                            selectedIds={formData.trello_label_ids || []}
-                            onChange={(newIds) => setFormData(prev => ({ ...prev, trello_label_ids: newIds }))}
-                        />
-                    </div>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="p-4 border border-border-color rounded-lg space-y-4">
-                        <h3 className="font-semibold text-lg">Frequency</h3>
+            <form onSubmit={handleFormSubmit} className="space-y-6">
+                {activeTab === 'main' && (
+                    <div className="space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
-                                <label htmlFor="frequency" className="form-label">Repeats</label>
-                                <select name="frequency" value={formData.frequency} onChange={handleInputChange} className="form-input">
-                                    <option value="daily">Daily</option>
-                                    <option value="weekly">Weekly</option>
-                                    <option value="monthly">Monthly</option>
-                                    <option value="yearly">Yearly</option>
+                                <label htmlFor="title" className="form-label">Card Title <span className="text-danger">*</span></label>
+                                <input type="text" name="title" value={formData.title} onChange={handleInputChange} required className="form-input" placeholder="e.g., Review weekly metrics" />
+                            </div>
+                            <div>
+                                <label htmlFor="owner_name" className="form-label">Assign to Member <span className="text-danger">*</span></label>
+                                <select name="owner_name" id="owner_name" value={formData.owner_name} onChange={handleInputChange} required className="form-input">
+                                    <option value="" disabled>Select a Trello member</option>
+                                    {trelloMembers.map(member => <option key={member.id} value={member.fullName}>{member.fullName}</option>)}
                                 </select>
                             </div>
-                            {formData.frequency !== 'once' && (
-                                <div>
-                                    <label htmlFor="frequency_interval" className="form-label">Repeat Every</label>
-                                    <div className="flex items-center">
-                                        <input type="number" name="frequency_interval" value={formData.frequency_interval} onChange={handleInputChange} min="1" className="form-input w-20 mr-2" />
-                                        <span className="text-text-secondary">{formData.frequency}{formData.frequency_interval > 1 ? 's' : ''}</span>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label htmlFor="category" className="form-label">Category</label>
+                                <CategoryCombobox 
+                                    value={formData.category}
+                                    onChange={(newCategory) => setFormData(prev => ({ ...prev, category: newCategory }))}
+                                    options={categories}
+                                />
+                            </div>
+                            <div>
+                                <label htmlFor="trello_label_ids" className="form-label">Trello Labels</label>
+                                <MultiSelectDropdown
+                                    options={trelloLabels}
+                                    selectedIds={formData.trello_label_ids || []}
+                                    onChange={(newIds) => setFormData(prev => ({ ...prev, trello_label_ids: newIds }))}
+                                />
+                            </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="p-4 border border-border-color rounded-lg space-y-4">
+                                <h3 className="font-semibold text-lg">Frequency</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label htmlFor="frequency" className="form-label">Repeats</label>
+                                        <select name="frequency" value={formData.frequency} onChange={handleInputChange} className="form-input">
+                                            <option value="daily">Daily</option>
+                                            <option value="weekly">Weekly</option>
+                                            <option value="monthly">Monthly</option>
+                                            <option value="yearly">Yearly</option>
+                                        </select>
                                     </div>
+                                    {formData.frequency !== 'once' && (
+                                        <div>
+                                            <label htmlFor="frequency_interval" className="form-label">Repeat Every</label>
+                                            <div className="flex items-center">
+                                                <input type="number" name="frequency_interval" value={formData.frequency_interval} onChange={handleInputChange} min="1" className="form-input w-20 mr-2" />
+                                                <span className="text-text-secondary">{formData.frequency}{formData.frequency_interval > 1 ? 's' : ''}</span>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
-                            )}
-                        </div>
-                        {formData.frequency === 'weekly' && (
-                            <div>
-                                <label className="form-label">Repeat On</label>
-                                <div className="mt-2 flex flex-wrap gap-2">
-                                    {DAYS_OF_WEEK.map(day => (
-                                        <label key={day.id} className="flex items-center space-x-2 cursor-pointer">
-                                            <input type="checkbox" name="weekly_day" value={day.id} checked={formData.frequency_details?.includes(day.id)} onChange={handleInputChange} className="h-4 w-4 rounded border-border-color text-primary focus:ring-primary"/>
-                                            <span>{day.name}</span>
-                                        </label>
-                                    ))}
-                                </div>
+                                {formData.frequency === 'weekly' && (
+                                    <div>
+                                        <label className="form-label">Repeat On</label>
+                                        <div className="mt-2 flex flex-wrap gap-2">
+                                            {DAYS_OF_WEEK.map(day => (
+                                                <label key={day.id} className="flex items-center space-x-2 cursor-pointer">
+                                                    <input type="checkbox" name="weekly_day" value={day.id} checked={formData.frequency_details?.includes(day.id)} onChange={handleInputChange} className="h-4 w-4 rounded border-border-color text-primary focus:ring-primary"/>
+                                                    <span>{day.name}</span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                                {formData.frequency === 'monthly' && (
+                                    <div>
+                                        <label htmlFor="frequency_details" className="form-label">Repeat on Day</label>
+                                        <select name="frequency_details" value={formData.frequency_details} onChange={handleInputChange} className="form-input">
+                                            {DAYS_OF_MONTH.map(d => <option key={d} value={d}>{d}</option>)}
+                                        </select>
+                                    </div>
+                                )}
+                                {formData.frequency === 'yearly' && (
+                                    <div>
+                                        <label className="form-label">Repeat On</label>
+                                        <div className="flex items-center gap-2">
+                                            <select name="yearly_month" value={yearlyMonth} onChange={handleInputChange} className="form-input">
+                                                {MONTHS_OF_YEAR.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                                            </select>
+                                            <select name="yearly_day" value={yearlyDay} onChange={handleInputChange} className="form-input">
+                                                {DAYS_OF_MONTH.map(d => <option key={d} value={d}>{d}</option>)}
+                                            </select>
+                                        </div>
+                                    </div>
+                                )}
+                                {formData.frequency !== 'once' && (
+                                    <div>
+                                        <label className="form-label">Due at</label>
+                                        <div className="flex items-center gap-2">
+                                            <select name="trigger_hour" value={formData.trigger_hour} onChange={handleInputChange} className="form-input">
+                                                {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map(h => <option key={h} value={h}>{h}</option>)}
+                                            </select>
+                                            <span>:</span>
+                                            <select name="trigger_minute" value={formData.trigger_minute} onChange={handleInputChange} className="form-input">
+                                                {Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0')).map(m => <option key={m} value={m}>{m}</option>)}
+                                            </select>
+                                            <select name="trigger_ampm" value={formData.trigger_ampm} onChange={handleInputChange} className="form-input">
+                                                <option value="am">AM</option>
+                                                <option value="pm">PM</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
-                        )}
-                        {formData.frequency === 'monthly' && (
-                            <div>
-                                <label htmlFor="frequency_details" className="form-label">Repeat on Day</label>
-                                <select name="frequency_details" value={formData.frequency_details} onChange={handleInputChange} className="form-input">
-                                    {DAYS_OF_MONTH.map(d => <option key={d} value={d}>{d}</option>)}
-                                </select>
-                            </div>
-                        )}
-                        {formData.frequency === 'yearly' && (
-                            <div>
-                                <label className="form-label">Repeat On</label>
-                                <div className="flex items-center gap-2">
-                                    <select name="yearly_month" value={yearlyMonth} onChange={handleInputChange} className="form-input">
-                                        {MONTHS_OF_YEAR.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                                    </select>
-                                    <select name="yearly_day" value={yearlyDay} onChange={handleInputChange} className="form-input">
-                                        {DAYS_OF_MONTH.map(d => <option key={d} value={d}>{d}</option>)}
-                                    </select>
-                                </div>
-                            </div>
-                        )}
-                        {formData.frequency !== 'once' && (
-                            <div>
-                                <label className="form-label">Due at</label>
-                                <div className="flex items-center gap-2">
-                                    <select name="trigger_hour" value={formData.trigger_hour} onChange={handleInputChange} className="form-input">
-                                        {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map(h => <option key={h} value={h}>{h}</option>)}
-                                    </select>
-                                    <span>:</span>
-                                    <select name="trigger_minute" value={formData.trigger_minute} onChange={handleInputChange} className="form-input">
-                                        {Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0')).map(m => <option key={m} value={m}>{m}</option>)}
-                                    </select>
-                                    <select name="trigger_ampm" value={formData.trigger_ampm} onChange={handleInputChange} className="form-input">
-                                        <option value="am">AM</option>
-                                        <option value="pm">PM</option>
-                                    </select>
-                                </div>
-                            </div>
-                        )}
-                    </div>
 
-                    <div className="p-4 border border-border-color rounded-lg space-y-4">
-                         <div className="flex items-center">
-                            <input type="checkbox" id="showDates" name="showDates" checked={showDates} onChange={handleInputChange} className="h-4 w-4 rounded border-border-color text-primary focus:ring-primary" />
-                            <label htmlFor="showDates" className="ml-2 block text-sm text-text-primary">Set start & end date</label>
-                        </div>
-                        {showDates && (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <label htmlFor="start_date" className="form-label">Start Date</label>
-                                    <input type="date" name="start_date" value={formData.start_date} onChange={handleInputChange} className="form-input" />
+                            <div className="p-4 border border-border-color rounded-lg space-y-4">
+                                 <div className="flex items-center">
+                                    <input type="checkbox" id="showDates" name="showDates" checked={showDates} onChange={handleInputChange} className="h-4 w-4 rounded border-border-color text-primary focus:ring-primary" />
+                                    <label htmlFor="showDates" className="ml-2 block text-sm text-text-primary">Set start & end date</label>
                                 </div>
-                                <div>
-                                    <label htmlFor="end_date" className="form-label">End Date</label>
-                                    <input type="date" name="end_date" value={formData.end_date} onChange={handleInputChange} className="form-input" />
-                                </div>
+                                {showDates && (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div>
+                                            <label htmlFor="start_date" className="form-label">Start Date</label>
+                                            <input type="date" name="start_date" value={formData.start_date} onChange={handleInputChange} className="form-input" />
+                                        </div>
+                                        <div>
+                                            <label htmlFor="end_date" className="form-label">End Date</label>
+                                            <input type="date" name="end_date" value={formData.end_date} onChange={handleInputChange} className="form-input" />
+                                        </div>
+                                    </div>
+                                )}
                             </div>
-                        )}
-                    </div>
-                </div>
+                        </div>
 
-                <div>
-                    <label htmlFor="description" className="form-label">Card Description</label>
-                    <textarea name="description" rows="4" value={formData.description} onChange={handleInputChange} className="form-input" placeholder="Add details to the Trello card description..."></textarea>
-                </div>
+                        <div>
+                            <label htmlFor="description" className="form-label">Card Description</label>
+                            <textarea name="description" rows="4" value={formData.description} onChange={handleInputChange} className="form-input" placeholder="Add details to the Trello card description..."></textarea>
+                        </div>
+                    </div>
+                )}
+                
+                {activeTab === 'checklist' && (
+                    <div className="p-4 border border-border-color rounded-lg">
+                        <ChecklistManager
+                            name={formData.checklist_name || ''}
+                            items={formData.checklist_items || []}
+                            onNameChange={handleInputChange}
+                            onItemsChange={(newItems) => setFormData(prev => ({ ...prev, checklist_items: newItems }))}
+                        />
+                    </div>
+                )}
 
                 {error && <p className="text-danger-text bg-danger-surface p-3 rounded-lg text-center">{error}</p>}
 

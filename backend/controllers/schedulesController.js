@@ -25,6 +25,10 @@ const scheduleSchema = z.object({
     end_date: z.string().nullable().optional(),
     trello_label_ids: z.array(z.string()).optional(),
     is_active: z.boolean().optional(),
+    checklist_name: z.string().optional(),
+    checklist_items: z.array(z.object({
+        item_name: z.string(),
+    })).optional(),
 });
 
 /**
@@ -34,9 +38,18 @@ const scheduleSchema = z.object({
  */
 export const getAllSchedules = async (req, res) => {
     try {
-        const result = await pool.query('SELECT * FROM schedules ORDER BY category ASC, id ASC');
+        const scheduleResult = await pool.query('SELECT * FROM schedules ORDER BY category ASC, id ASC');
+        const itemsResult = await pool.query('SELECT * FROM checklist_items ORDER BY id ASC');
         
-        const groupedSchedules = result.rows.reduce((acc, schedule) => {
+        const schedules = scheduleResult.rows;
+        const checklistItems = itemsResult.rows;
+
+        const schedulesWithItems = schedules.map(schedule => ({
+            ...schedule,
+            checklist_items: checklistItems.filter(item => item.schedule_id === schedule.id)
+        }));
+
+        const groupedSchedules = schedulesWithItems.reduce((acc, schedule) => {
             const category = schedule.category || 'Uncategorized';
             if (!acc[category]) {
                 acc[category] = [];
@@ -79,22 +92,40 @@ export const createSchedule = async (req, res) => {
         return res.status(400).json({ message: "Invalid input.", errors: validationResult.error.issues });
     }
 
-    const { title, owner_name, description, category, frequency, frequency_interval, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date, end_date, trello_label_ids, is_active } = validationResult.data;
+    const { title, owner_name, description, category, frequency, frequency_interval, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date, end_date, trello_label_ids, is_active, checklist_name, checklist_items } = validationResult.data;
     
-    const query = `
-        INSERT INTO schedules (title, owner_name, description, category, frequency, frequency_interval, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date, end_date, trello_label_ids, is_active) 
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) 
-        RETURNING *;
-    `;
-    const values = [title, owner_name, description, category || 'Uncategorized', frequency, frequency_interval || 1, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date || null, end_date || null, trello_label_ids || [], is_active !== false];
-    
+    const client = await pool.connect();
     try {
-        const result = await pool.query(query, values);
-        await logAuditEvent('INFO', `New schedule created: "${result.rows[0].title}"`, { schedule: result.rows[0] }, req.user);
-        res.status(201).json(result.rows[0]);
+        await client.query('BEGIN');
+
+        const scheduleQuery = `
+            INSERT INTO schedules (title, owner_name, description, category, frequency, frequency_interval, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date, end_date, trello_label_ids, is_active, checklist_name) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) 
+            RETURNING *;
+        `;
+        const scheduleValues = [title, owner_name, description, category || 'Uncategorized', frequency, frequency_interval || 1, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date || null, end_date || null, trello_label_ids || [], is_active !== false, checklist_name];
+        
+        const scheduleResult = await client.query(scheduleQuery, scheduleValues);
+        const newSchedule = scheduleResult.rows[0];
+
+        if (checklist_items && checklist_items.length > 0) {
+            const itemQuery = 'INSERT INTO checklist_items (schedule_id, item_name) VALUES ($1, $2)';
+            for (const item of checklist_items) {
+                await client.query(itemQuery, [newSchedule.id, item.item_name]);
+            }
+        }
+
+        await client.query('COMMIT');
+        
+        const finalSchedule = { ...newSchedule, checklist_items };
+        await logAuditEvent('INFO', `New schedule created: "${newSchedule.title}"`, { schedule: finalSchedule }, req.user);
+        res.status(201).json(finalSchedule);
     } catch (err) {
+        await client.query('ROLLBACK');
         console.error('Create schedule error:', err);
         res.status(500).json({ error: 'Internal server error' });
+    } finally {
+        client.release();
     }
 };
 
@@ -110,30 +141,51 @@ export const updateSchedule = async (req, res) => {
     }
 
     const { id } = req.params;
-    const { title, owner_name, description, category, frequency, frequency_interval, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date, end_date, trello_label_ids, is_active } = validationResult.data;
+    const { title, owner_name, description, category, frequency, frequency_interval, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date, end_date, trello_label_ids, is_active, checklist_name, checklist_items } = validationResult.data;
     
+    const client = await pool.connect();
     try {
+        await client.query('BEGIN');
+
         const beforeResult = await pool.query('SELECT * FROM schedules WHERE id = $1', [id]);
         if (beforeResult.rows.length === 0) {
+            await client.query('ROLLBACK');
             return res.status(404).json({ error: 'Schedule not found' });
         }
         
-        const query = `
+        const scheduleQuery = `
             UPDATE schedules SET 
             title = $1, owner_name = $2, description = $3, category = $4, frequency = $5, 
             frequency_interval = $6, frequency_details = $7, trigger_hour = $8, 
-            trigger_minute = $9, trigger_ampm = $10, start_date = $11, end_date = $12, trello_label_ids = $13, is_active = $14
-            WHERE id = $15 
+            trigger_minute = $9, trigger_ampm = $10, start_date = $11, end_date = $12, 
+            trello_label_ids = $13, is_active = $14, checklist_name = $15
+            WHERE id = $16 
             RETURNING *;
         `;
-        const values = [title, owner_name, description, category || 'Uncategorized', frequency, frequency_interval || 1, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date || null, end_date || null, trello_label_ids || [], is_active, id];
-        const result = await pool.query(query, values);
+        const scheduleValues = [title, owner_name, description, category || 'Uncategorized', frequency, frequency_interval || 1, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date || null, end_date || null, trello_label_ids || [], is_active, checklist_name, id];
+        const scheduleResult = await client.query(scheduleQuery, scheduleValues);
+        const updatedSchedule = scheduleResult.rows[0];
+
+        await client.query('DELETE FROM checklist_items WHERE schedule_id = $1', [id]);
+
+        if (checklist_items && checklist_items.length > 0) {
+            const itemQuery = 'INSERT INTO checklist_items (schedule_id, item_name) VALUES ($1, $2)';
+            for (const item of checklist_items) {
+                await client.query(itemQuery, [id, item.item_name]);
+            }
+        }
         
-        await logAuditEvent('INFO', `Schedule updated: "${result.rows[0].title}"`, { before: beforeResult.rows[0], after: result.rows[0] }, req.user);
-        res.status(200).json(result.rows[0]);
+        await client.query('COMMIT');
+        
+        const finalSchedule = { ...updatedSchedule, checklist_items };
+        await logAuditEvent('INFO', `Schedule updated: "${updatedSchedule.title}"`, { before: beforeResult.rows[0], after: finalSchedule }, req.user);
+        res.status(200).json(finalSchedule);
     } catch (err) {
+        await client.query('ROLLBACK');
         console.error('Update schedule error:', err);
         res.status(500).json({ error: 'Internal server error' });
+    } finally {
+        client.release();
     }
 };
 
@@ -204,6 +256,14 @@ export const triggerSchedule = async (req, res) => {
         }
         
         const schedule = rows[0];
+
+        // Add checklist items if present
+        const checklist_rows = await pool.query('SELECT * FROM checklist_items WHERE schedule_id = $1 ORDER BY id ASC', [id]);
+        if (checklist_rows.rows) {
+            schedule.checklist_items = checklist_rows.rows;
+        } else {
+            schedule.checklist_items = [];
+        }
 
         if (req.user.role !== 'admin' && req.user.username !== schedule.owner_name) {
             await logAuditEvent('ERROR', `Unauthorized attempt to trigger schedule by user '${req.user.username}'.`, { scheduleId: id, owner: schedule.owner_name }, req.user);

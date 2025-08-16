@@ -64,14 +64,28 @@ export const createTrelloCard = async (schedule, dueDate, appSettings) => {
         due: dueDate.toISOString()
     };
 
-    // Use the label IDs from the individual schedule object if it exists.
     if (schedule.trello_label_ids && schedule.trello_label_ids.length > 0) {
         cardData.idLabels = schedule.trello_label_ids.join(',');
     }
 
-    const url = `https://api.trello.com/1/cards?key=${TRELLO_API_KEY}&token=${TRELLO_API_TOKEN}`;
+    const cardUrl = `https://api.trello.com/1/cards?key=${TRELLO_API_KEY}&token=${TRELLO_API_TOKEN}`;
+    const cardResponse = await axios.post(cardUrl, cardData);
+    const newCard = cardResponse.data;
+    console.log('schedule.checklist_name: ' + schedule.checklist_name);
+    console.log('schedule.checklist_items: ' + schedule.checklist_items);
+    console.log('schedule.checklist_items.length > 0: ' + schedule.checklist_items.length > 0);
+
+    if (schedule.checklist_name && schedule.checklist_items && schedule.checklist_items.length > 0) {
+        console.log('Creating checklist')
+        const checklistUrl = `https://api.trello.com/1/checklists?idCard=${newCard.id}&name=${schedule.checklist_name}&key=${TRELLO_API_KEY}&token=${TRELLO_API_TOKEN}`;
+        const checklistResponse = await axios.post(checklistUrl);
+        const newChecklist = checklistResponse.data;
+
+        for (const item of schedule.checklist_items) {
+            const itemUrl = `https://api.trello.com/1/checklists/${newChecklist.id}/checkItems?key=${TRELLO_API_KEY}&token=${TRELLO_API_TOKEN}`;
+            await axios.post(itemUrl, { name: item.item_name, checked: false });
+        }
+    }
     
-    const response = await axios.post(url, cardData);
-    
-    return response.data;
+    return newCard;
 };
