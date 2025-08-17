@@ -6,12 +6,18 @@ The Trello Card Scheduler is a full-stack web application designed to automate t
 
 ## Major Features
 
+### General Features:
+
+* **Light & Dark Mode:** The application includes a theme toggle, allowing users to switch between a light and dark interface for their comfort.
+
 ### For All Users:
 
 * **Secure Login:** Users can log in to the application with their credentials to access their schedules.
+* **Scheduler Status View:** The main dashboard includes a real-time status panel that shows when the scheduler last ran, its duration, how many cards were created, and when the next run is scheduled.
 * **Side-Panel Layout:** A modern, two-column layout with a persistent left sidebar for easy navigation and a main content area for focused tasks.
 * **Categorized & Collapsible Schedule List:** Schedules are neatly organized into collapsible categories in the side panel.
 * **Expandable Schedule Details:** Each schedule in the list can be expanded to show more details, including its full frequency, active dates, and a link to its active Trello card.
+* **Toggle Schedules On/Off:** Schedules can be quickly activated or deactivated with a single click, allowing users to pause and resume recurring card creation without deleting the schedule.
 * **Schedule Creation & Management:** Users can create, edit, and delete their own schedules with a detailed form that includes:
     * Title, description, and category.
     * Assignment to a specific Trello board member.
@@ -24,7 +30,7 @@ The Trello Card Scheduler is a full-stack web application designed to automate t
 
 * **Admin-Only Navigation:** A dedicated "Admin" section in the sidebar provides access to all administrative features.
 * **Dashboard & Statistics:** A dashboard page displays key application metrics, including total schedules, total cards created, and breakdowns of activity by user and category.
-* **Application Settings:** A secure settings page allows administrators to configure the application's connection to the Trello API, including the API key, token, and target board/list IDs.
+* **Application Settings with Trello Helpers:** A secure settings page allows administrators to configure the application's connection to the Trello API. The interface includes helpers to fetch and list available Trello boards and lists, simplifying the process of finding the correct IDs.
 * **User Management:** Administrators have full control over user accounts, including the ability to:
     * Create new users with either 'admin' or 'user' roles.
     * Delete existing users.
@@ -37,15 +43,23 @@ This application is designed to be deployed as a single Docker container.
 
 ### Building the Production Image
 
-To build the production-ready Docker image, run the following command from the root of the repository:
+The `Dockerfile` for this project is configured to clone the latest version of the source code directly from the `main` branch on GitHub. This means you do not need to have the source code on your local machine to build the image.
 
-*(Note: If you are rebuilding to get the latest code from the repository, you may need to use the `--no-cache` flag to ensure a fresh clone: `docker build --no-cache ...`)*
+To build the production-ready Docker image, run the following command:
+
+```bash
+docker build -t trello-card-scheduler .
+```
+
+**Note on Rebuilding:** Because the `Dockerfile` clones the repository, Docker's build cache will not automatically detect when new code has been pushed to GitHub. If you need to rebuild the image to get the latest updates, you must use the `--no-cache` flag to force a fresh clone of the repository.
+
+```bash
+docker build --no-cache -t trello-card-scheduler .
+```
 
 ### Running the Container
 
 To run the application, you must provide the following environment variables to the `docker run` command.
-
-```docker build -t trello-card-scheduler .```
 
 #### Required Environment Variables
 
