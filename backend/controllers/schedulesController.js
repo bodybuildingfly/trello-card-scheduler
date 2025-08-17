@@ -152,7 +152,7 @@ export const updateSchedule = async (req, res) => {
             await client.query('ROLLBACK');
             return res.status(404).json({ error: 'Schedule not found' });
         }
-        
+
         const scheduleQuery = `
             UPDATE schedules SET 
             title = $1, owner_name = $2, description = $3, category = $4, frequency = $5, 

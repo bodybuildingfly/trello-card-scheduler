@@ -63,7 +63,7 @@ function App() {
     // Form-related state
     const [isEditing, setIsEditing] = useState(false);
     const [selectedScheduleId, setSelectedScheduleId] = useState(null);
-    const initialFormState = { title: '', owner_name: '', description: '', category: '', frequency: 'daily', frequency_interval: 1, frequency_details: '1', start_date: '', end_date: '', trigger_hour: '09', trigger_minute: '00', trigger_ampm: 'am', trello_label_ids: [], is_active: true };
+    const initialFormState = { title: '', owner_name: '', description: '', category: '', frequency: 'daily', frequency_interval: 1, frequency_details: '1', start_date: '', end_date: '', trigger_hour: '09', trigger_minute: '00', trigger_ampm: 'am', trello_label_ids: [], checklist_name: '', is_active: true };
     const [formData, setFormData] = useState(initialFormState);
 
     // Modal-related state
