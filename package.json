@@ -1,6 +1,6 @@
 {
   "name": "trello-scheduler-dev",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "private": true,
   "scripts": {
     "dev": "concurrently \"npm run dev --prefix backend\" \"npm start --prefix frontend\"",
