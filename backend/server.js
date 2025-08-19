@@ -15,6 +15,7 @@ import appStatusRoutes from './routes/appStatusRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import usersRoutes from './routes/usersRoutes.js';
 import statsRoutes from './routes/statsRoutes.js';
+import releasesRoutes from './routes/releasesRoutes.js';
 
 // --- Express App Setup ---
 const app = express();
@@ -64,6 +65,7 @@ app.use('/api/stats', statsRoutes);
 app.use('/api', appStatusRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/users', usersRoutes);
+app.use('/api/releases', releasesRoutes);
 
 // --- Serve Frontend Static Files (Production Only) ---
 if (process.env.NODE_ENV === 'production') {

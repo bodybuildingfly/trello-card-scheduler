@@ -3,7 +3,7 @@
  * @description The initialFormState has been updated to use `trello_label_ids` as an array
  * to support the new multi-select label functionality.
  */
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 
 // --- Component Imports ---
 import SettingsPage from './components/SettingsPage';
@@ -16,6 +16,7 @@ import ScheduleForm from './components/ScheduleForm';
 import ProtectedRoute from './components/ProtectedRoute';
 import UserManagementPage from './components/UserManagementPage';
 import DashboardPage from './components/DashboardPage';
+import ReleasesPage from './components/ReleasesPage';
 import ThemeToggle from './components/ThemeToggle'; // Import the new component
 
 // --- Service & Context Imports ---
@@ -264,14 +265,12 @@ function App() {
                         <div className="text-center mb-6">
                             <h1 className="text-2xl font-bold text-text-primary">Trello Scheduler</h1>
                             {appVersion && (
-                                <a 
-                                    href="https://github.com/bodybuildingfly/trello-card-scheduler" 
-                                    target="_blank" 
-                                    rel="noopener noreferrer"
+                                <button
+                                    onClick={() => setActiveView('releases')}
                                     className="text-xs text-text-muted mt-1 hover:text-text-accent hover:underline"
                                 >
                                     Version {appVersion}
-                                </a>
+                                </button>
                             )}
                         </div>
 
@@ -382,6 +381,7 @@ function App() {
                             />
                         )}
                         {isAdmin && activeView === 'dashboard' && <DashboardPage />}
+                        {activeView === 'releases' && <ReleasesPage />}
                         {isAdmin && activeView === 'audit' && <AuditLogViewer />}
                         {isAdmin && activeView === 'settings' && <SettingsPage onSettingsSaved={() => { setStatusKey(prev => prev + 1); loadAllData(); }} />}
                         {isAdmin && activeView === 'users' && <UserManagementPage />}
