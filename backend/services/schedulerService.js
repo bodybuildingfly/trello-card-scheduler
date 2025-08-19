@@ -101,57 +101,9 @@ const runScheduler = async (appSettings) => {
     try {
         const { rows: schedules } = await pool.query("SELECT * FROM schedules WHERE is_active = TRUE");
         for (const schedule of schedules) {
-            let canCreateNewCard = false;
-            let lastDueDateForCalc = null;
-
-            if (!schedule.active_card_id) {
-                canCreateNewCard = true;
-            } else {
-                try {
-                    const activeCard = await trelloService.getTrelloCard(schedule.active_card_id, appSettings);
-                    if (!activeCard || activeCard.closed || activeCard.idList === appSettings.TRELLO_DONE_LIST_ID) {
-                        await logAuditEvent('INFO', `Active card for schedule ${schedule.id} is completed. A new card will be created.`, { cardId: schedule.active_card_id, runId });
-                        canCreateNewCard = true;
-                        if (activeCard) {
-                            lastDueDateForCalc = new Date(activeCard.due);
-                        }
-                    } else {
-                        await logAuditEvent('INFO', `Skipping card creation for schedule ${schedule.id}: active card "${activeCard.name}" is not yet complete.`, { cardId: schedule.active_card_id, runId });
-                    }
-                } catch (error) {
-                    await logAuditEvent('ERROR', `Failed to check status of active card for schedule ${schedule.id}.`, { cardId: schedule.active_card_id, error: String(error), runId });
-                }
-            }
-
-            if (canCreateNewCard) {
-                const nextDueDate = calculateNextDueDate(schedule, lastDueDateForCalc);
-                const startDate = schedule.start_date ? new Date(schedule.start_date) : null;
-                const endDate = schedule.end_date ? new Date(schedule.end_date) : null;
-
-                if ((startDate && nextDueDate < startDate) || (endDate && nextDueDate > endDate)) {
-                    await logAuditEvent('INFO', `Next due date for schedule ${schedule.id} is outside the defined start/end range. Skipping.`, { nextDueDate, startDate, endDate, runId });
-                    continue;
-                }
-                
-                try {
-                    const newCard = await trelloService.createTrelloCard(schedule, nextDueDate, appSettings);
-                    if (newCard) {
-                        await logAuditEvent('INFO', `Card creation successful: "${newCard.name}"`, { schedule, newCard, dueDate: nextDueDate, runId });
-                        await pool.query(
-                            'UPDATE schedules SET active_card_id = $1, last_card_created_at = NOW() WHERE id = $2', 
-                            [newCard.id, schedule.id]
-                        );
-                    }
-                } catch (error) {
-                    const errorDetails = {
-                        schedule,
-                        statusCode: error.response?.status,
-                        response: error.response?.data || error.message,
-                        runId
-                    };
-                    await logAuditEvent('ERROR', 'Card creation failed: Trello API error.', errorDetails);
-                }
-            }
+            // The core logic is now centralized in trelloService. 
+            // We pass `null` for the user since this is a system-initiated action.
+            await trelloService.processCardCreationForSchedule(schedule, appSettings, null);
         }
     } catch (error) {
         await logAuditEvent('ERROR', 'Scheduler run failed with a database error.', { error: String(error), runId });

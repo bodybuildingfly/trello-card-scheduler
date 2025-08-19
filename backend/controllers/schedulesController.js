@@ -5,7 +5,6 @@
  */
 import pool from '../db.js';
 import * as trelloService from '../services/trelloService.js';
-import { calculateNextDueDate } from '../services/schedulerService.js';
 import logAuditEvent from '../utils/logger.js';
 import { z } from 'zod';
 
@@ -252,73 +251,31 @@ export const triggerSchedule = async (req, res) => {
     try {
         const { rows } = await pool.query('SELECT * FROM schedules WHERE id = $1', [id]);
         if (rows.length === 0) {
-            return res.status(404).json({ error: 'Schedule not found.' });
+            return res.status(404).json({ message: 'Schedule not found.' });
         }
         
         const schedule = rows[0];
 
-        // Add checklist items if present
-        const checklist_rows = await pool.query('SELECT * FROM checklist_items WHERE schedule_id = $1 ORDER BY id ASC', [id]);
-        if (checklist_rows.rows) {
-            schedule.checklist_items = checklist_rows.rows;
-        } else {
-            schedule.checklist_items = [];
-        }
-
         if (req.user.role !== 'admin' && req.user.username !== schedule.owner_name) {
             await logAuditEvent('ERROR', `Unauthorized attempt to trigger schedule by user '${req.user.username}'.`, { scheduleId: id, owner: schedule.owner_name }, req.user);
-            return res.status(403).json({ error: 'You are not authorized to trigger this schedule.' });
-        }
-        
-        let lastDueDateForCalc = null;
-        if (schedule.active_card_id) {
-            try {
-                const activeCard = await trelloService.getTrelloCard(schedule.active_card_id, appSettings);
-                if (activeCard && !activeCard.closed && activeCard.idList !== appSettings.TRELLO_DONE_LIST_ID) {
-                    const conflictMessage = `Cannot create a new card. The previous card "${activeCard.name}" is still active.`;
-                    await logAuditEvent('INFO', `Manual trigger blocked for schedule ${id}.`, { reason: conflictMessage }, req.user);
-                    return res.status(409).json({ message: conflictMessage });
-                }
-                if (activeCard) {
-                    lastDueDateForCalc = new Date(activeCard.due);
-                }
-            } catch (error) {
-                await logAuditEvent('ERROR', `Could not verify status of active card ${schedule.active_card_id} during manual trigger. Proceeding with caution.`, { error: String(error) }, req.user);
-            }
+            return res.status(403).json({ message: 'You are not authorized to trigger this schedule.' });
         }
 
-        const nextDueDate = calculateNextDueDate(schedule, lastDueDateForCalc);
-        
-        // Validate the calculated due date against the schedule's start and end dates.
-        const startDate = schedule.start_date ? new Date(schedule.start_date) : null;
-        const endDate = schedule.end_date ? new Date(schedule.end_date) : null;
+        const result = await trelloService.processCardCreationForSchedule(schedule, appSettings, req.user);
 
-        if ((startDate && nextDueDate < startDate) || (endDate && nextDueDate > endDate)) {
-            const message = `Cannot create card. The next due date (${nextDueDate.toLocaleDateString()}) is outside the schedule's active range.`;
-            await logAuditEvent('INFO', `Manual trigger blocked for schedule ${id}.`, { reason: message }, req.user);
-            return res.status(400).json({ message });
-        }
-        
-        const newCard = await trelloService.createTrelloCard(schedule, nextDueDate, appSettings);
-        
-        if (newCard) {
-            await logAuditEvent('INFO', `Manual card creation successful: "${newCard.name}"`, { schedule, newCard, dueDate: nextDueDate }, req.user);
-            await pool.query(
-                'UPDATE schedules SET active_card_id = $1, last_card_created_at = NOW() WHERE id = $2', 
-                [newCard.id, schedule.id]
-            );
-            res.status(201).json(newCard);
+        if (result.success) {
+            res.status(result.status).json(result.card);
         } else {
-            return res.status(400).json({ error: 'Failed to create Trello card. This may be due to a configuration issue (e.g., missing Trello member).' });
+            res.status(result.status).json({ message: result.message });
         }
     } catch (error) {
+        // This outer catch block handles unexpected errors, like the initial DB query failing.
         const errorDetails = {
             scheduleId: id,
-            statusCode: error.response?.status,
-            response: error.response?.data || error.message,
+            error: error.message,
         };
-        await logAuditEvent('ERROR', `Manual trigger failed for schedule ${id}.`, errorDetails, req.user);
-        res.status(500).json({ error: 'Internal server error.' });
+        await logAuditEvent('ERROR', `Manual trigger failed unexpectedly for schedule ${id}.`, errorDetails, req.user);
+        res.status(500).json({ message: 'An unexpected internal server error occurred.' });
     }
 };
 
