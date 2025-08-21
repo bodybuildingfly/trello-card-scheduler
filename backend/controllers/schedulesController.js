@@ -286,41 +286,65 @@ export const triggerSchedule = async (req, res) => {
  */
 export const cloneSchedule = async (req, res) => {
     const { id } = req.params;
+    const client = await pool.connect();
     try {
-        const { rows } = await pool.query('SELECT * FROM schedules WHERE id = $1', [id]);
-        if (rows.length === 0) {
+        await client.query('BEGIN');
+
+        const scheduleResult = await client.query('SELECT * FROM schedules WHERE id = $1', [id]);
+        if (scheduleResult.rows.length === 0) {
+            await client.query('ROLLBACK');
             return res.status(404).json({ error: 'Schedule to clone not found.' });
         }
-        
-        const originalSchedule = rows[0];
-        const newSchedule = {
+        const originalSchedule = scheduleResult.rows[0];
+
+        const itemsResult = await client.query('SELECT * FROM checklist_items WHERE schedule_id = $1', [id]);
+        const originalChecklistItems = itemsResult.rows;
+
+        const newScheduleData = {
             ...originalSchedule,
             title: `${originalSchedule.title} (Copy)`,
             active_card_id: null,
             last_card_created_at: null,
         };
 
-        const query = `
-            INSERT INTO schedules (title, owner_name, description, category, frequency, frequency_interval, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date, end_date, trello_label_ids) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) 
+        const insertScheduleQuery = `
+            INSERT INTO schedules (title, owner_name, description, category, frequency, frequency_interval, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date, end_date, trello_label_ids, checklist_name) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) 
             RETURNING *;
         `;
-        const values = [
-            newSchedule.title, newSchedule.owner_name, newSchedule.description, newSchedule.category, 
-            newSchedule.frequency, newSchedule.frequency_interval, newSchedule.frequency_details, 
-            newSchedule.trigger_hour, newSchedule.trigger_minute, newSchedule.trigger_ampm, 
-            newSchedule.start_date, newSchedule.end_date, newSchedule.trello_label_ids
+        const insertScheduleValues = [
+            newScheduleData.title, newScheduleData.owner_name, newScheduleData.description, newScheduleData.category, 
+            newScheduleData.frequency, newScheduleData.frequency_interval, newScheduleData.frequency_details, 
+            newScheduleData.trigger_hour, newScheduleData.trigger_minute, newScheduleData.trigger_ampm, 
+            newScheduleData.start_date, newScheduleData.end_date, newScheduleData.trello_label_ids,
+            newScheduleData.checklist_name
         ];
 
-        const result = await pool.query(query, values);
-        const clonedSchedule = result.rows[0];
+        const clonedScheduleResult = await client.query(insertScheduleQuery, insertScheduleValues);
+        const clonedSchedule = clonedScheduleResult.rows[0];
+
+        let newChecklistItems = [];
+        if (originalChecklistItems.length > 0) {
+            const itemQuery = 'INSERT INTO checklist_items (schedule_id, item_name) VALUES ($1, $2) RETURNING *';
+            for (const item of originalChecklistItems) {
+                const newItemResult = await client.query(itemQuery, [clonedSchedule.id, item.item_name]);
+                newChecklistItems.push(newItemResult.rows[0]);
+            }
+        }
+        
+        await client.query('COMMIT');
+
+        const finalClonedSchedule = { ...clonedSchedule, checklist_items: newChecklistItems };
 
         await logAuditEvent('INFO', `Schedule cloned: "${clonedSchedule.title}"`, { originalId: id, newId: clonedSchedule.id }, req.user);
-        res.status(201).json(clonedSchedule);
+        res.status(201).json(finalClonedSchedule);
 
     } catch (error) {
+        await client.query('ROLLBACK');
         console.error('Clone schedule error:', error);
         await logAuditEvent('ERROR', `Failed to clone schedule ${id}.`, { error: String(error) }, req.user);
         res.status(500).json({ error: 'Internal server error.' });
+    } finally {
+        client.release();
     }
 };
