@@ -2,7 +2,7 @@
 
 The Trello Card Scheduler is a full-stack web application designed to automate the creation of recurring Trello cards. It provides a user-friendly interface for creating detailed schedules and a powerful backend scheduler to handle the card creation process automatically. The application features a complete authentication system with role-based access for regular users and administrators.
 
-<img width="1664" height="1245" alt="image" src="https://github.com/user-attachments/assets/c99f103a-5667-4aaf-b727-4513d1662d61" />
+<img width="1668" height="1246" alt="TrelloCardSchedulerScreenshot" src="https://github.com/user-attachments/assets/d071ac88-ca55-4b2f-836d-28c9d4ce6e2e" />
 
 ## Major Features
 
