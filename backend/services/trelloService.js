@@ -66,13 +66,21 @@ export const processCardCreationForSchedule = async (schedule, appSettings, user
         }
     }
 
-    const nextDueDate = calculateNextDueDate(schedule, lastDueDateForCalc);
+    let nextDueDate = calculateNextDueDate(schedule, lastDueDateForCalc);
     const startDate = schedule.start_date ? new Date(schedule.start_date) : null;
     const endDate = schedule.end_date ? new Date(schedule.end_date) : null;
 
-    if ((startDate && nextDueDate < startDate) || (endDate && nextDueDate > endDate)) {
-        const message = `Cannot create card. The next due date (${nextDueDate.toLocaleDateString()}) is outside the schedule's active range.`;
-        await logAuditEvent('INFO', `Card creation blocked for schedule ${schedule.id}.`, { ...logContext, reason: message }, user);
+    // If the calculated due date is before the schedule's start date, we need to recalculate
+    // using the start date as the baseline to find the *first* valid due date.
+    if (startDate && nextDueDate < startDate) {
+        nextDueDate = calculateNextDueDate(schedule, lastDueDateForCalc, startDate);
+    }
+
+    // Now that we have the correct next due date based on frequency and start date,
+    // we check if this date falls outside the schedule's end date.
+    if (endDate && nextDueDate > endDate) {
+        const message = `Cannot create card. The schedule's frequency settings do not produce any valid due dates within the active date range.`;
+        await logAuditEvent('INFO', `Card creation blocked for schedule ${schedule.id}.`, { ...logContext, reason: message, dueDate: nextDueDate.toLocaleDateString() }, user);
         return { success: false, message, status: 400 };
     }
     

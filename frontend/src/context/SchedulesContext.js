@@ -1,4 +1,5 @@
 import React, { createContext, useState, useContext, useCallback } from 'react';
+import { toast } from 'react-toastify';
 import apiClient from '../api';
 import { useAuth } from './AuthContext'; // We'll need this to get settings
 
@@ -25,7 +26,6 @@ export const SchedulesProvider = ({ children }) => {
     const [trelloLabels, setTrelloLabels] = useState([]);
     const [categories, setCategories] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState(null);
 
     const { isAuthenticated } = useAuth();
 
@@ -38,7 +38,7 @@ export const SchedulesProvider = ({ children }) => {
             setSchedules(res.data);
         } catch (err) {
             console.error("Schedules Fetch Error:", err);
-            setError("Failed to load schedules.");
+            toast.error("Failed to load schedules.");
         }
     }, []);
 
@@ -69,7 +69,7 @@ export const SchedulesProvider = ({ children }) => {
             }
         } catch (err) {
             console.error("Trello Data Fetch Error:", err);
-            setError("Failed to load Trello data. Check settings.");
+            toast.error("Failed to load Trello data. Check settings.");
         }
     }, [isAuthenticated]);
 
@@ -79,7 +79,6 @@ export const SchedulesProvider = ({ children }) => {
     const loadAllData = useCallback(async () => {
         if (!isAuthenticated) return;
         setIsLoading(true);
-        setError(null);
         try {
             await Promise.all([
                 fetchSchedules(),
@@ -87,7 +86,7 @@ export const SchedulesProvider = ({ children }) => {
                 fetchTrelloData()
             ]);
         } catch (err) {
-            setError("Failed to load initial application data.");
+            toast.error("Failed to load initial application data.");
         } finally {
             setIsLoading(false);
         }
@@ -101,7 +100,6 @@ export const SchedulesProvider = ({ children }) => {
         trelloLabels,
         categories,
         isLoading,
-        error,
         loadAllData, // Expose a single function to refresh all data
     };
 

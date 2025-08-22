@@ -18,6 +18,8 @@ import UserManagementPage from './components/UserManagementPage';
 import DashboardPage from './components/DashboardPage';
 import ReleasesPage from './components/ReleasesPage';
 import ThemeToggle from './components/ThemeToggle'; // Import the new component
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 // --- Service & Context Imports ---
 import apiClient from './api';
@@ -52,14 +54,12 @@ function App() {
         trelloLabels, 
         categories, 
         isLoading, 
-        error: dataError,
         loadAllData 
     } = useSchedules();
     
     const [appVersion, setAppVersion] = useState('');
     const [activeView, setActiveView] = useState('welcome');
     const [expandedItemId, setExpandedItemId] = useState(null);
-    const [formError, setFormError] = useState(null);
 
     // Form-related state
     const [isEditing, setIsEditing] = useState(false);
@@ -144,7 +144,7 @@ function App() {
     }, [collapsedCategories]);
 
     // --- Event Handlers ---
-    const handleFormSubmit = async (submittedFormData, setError) => {
+    const handleFormSubmit = async (submittedFormData) => {
         try {
           const dataToSubmit = {
             ...submittedFormData,
@@ -159,19 +159,19 @@ function App() {
             await loadAllData(); // Refresh sidebar list
             // Update the form with the newly saved data to keep it open
             setFormData({ ...initialFormState, ...updatedSchedule });
+            toast.success("Schedule updated successfully!");
           } else {
             // For creating a new schedule, clear the form and close it
             await apiClient.post('/api/schedules', dataToSubmit);
             await loadAllData();
             resetForm(true);
+            toast.success("Schedule created successfully!");
           }
         } catch (err) {
-            if (err.response?.data?.errors) {
-                const formattedErrors = err.response.data.errors.map(e => e.message).join(' ');
-                setError(formattedErrors);
-            } else {
-                setError(`Failed to ${isEditing ? 'update' : 'add'} schedule.`);
-            }
+            const errorMessage = err.response?.data?.errors 
+                ? err.response.data.errors.map(e => e.message).join(' ')
+                : `Failed to ${isEditing ? 'update' : 'add'} schedule.`;
+            toast.error(errorMessage);
         }
     };
 
@@ -179,7 +179,6 @@ function App() {
         setFormData(initialFormState);
         setIsEditing(false);
         setSelectedScheduleId(null);
-        setFormError(null);
         if (hideForm) {
             setActiveView('welcome');
             setExpandedItemId(null);
@@ -203,9 +202,10 @@ function App() {
         if (!scheduleToDelete) return;
         try {
             await apiClient.delete(`/api/schedules/${scheduleToDelete.id}`);
+            toast.success(`Successfully deleted schedule "${scheduleToDelete?.title}".`);
             await loadAllData();
         } catch (error) {
-            setFormError("Failed to delete schedule.");
+            toast.error("Failed to delete schedule.");
         } finally {
             setShowDeleteModal(false);
             setScheduleToDelete(null);
@@ -217,10 +217,11 @@ function App() {
         try {
             const { data: newCard } = await apiClient.post(`/api/schedules/${scheduleId}/trigger`);
             setFormData(prev => ({ ...prev, active_card_id: newCard.id }));
+            toast.success("Card created successfully!");
             await loadAllData();
         } catch (error) {
             console.error("Manual trigger failed", error);
-            setFormError("Manual trigger failed. Check server logs.");
+            toast.error("Manual trigger failed. Check server logs.");
         } finally {
             setTriggeringId(null);
         }
@@ -229,10 +230,11 @@ function App() {
     const handleCloneClick = async (scheduleId) => {
         try {
             await apiClient.post(`/api/schedules/${scheduleId}/clone`);
+            toast.success("Schedule cloned successfully!");
             await loadAllData();
         } catch (error) {
             console.error("Clone failed", error);
-            setFormError("Failed to clone schedule. Check server logs.");
+            toast.error("Failed to clone schedule. Check server logs.");
         }
     };
 
@@ -250,6 +252,18 @@ function App() {
 
     return (
         <ProtectedRoute>
+            <ToastContainer
+                position="top-right"
+                autoClose={5000}
+                hideProgressBar={false}
+                newestOnTop={false}
+                closeOnClick
+                rtl={false}
+                pauseOnFocusLoss
+                draggable
+                pauseOnHover
+                theme="colored"
+            />
             <div className="h-screen w-screen font-sans text-text-primary grid grid-cols-12">
                 {showDeleteModal && (
                     <ConfirmationModal 
@@ -354,12 +368,6 @@ function App() {
 
                 {/* --- Main Content Area --- */}
                 <main className="col-span-8 p-8 overflow-y-auto">
-                    {(dataError || formError) && (
-                        <div className="bg-danger-surface border-l-4 border-danger text-danger-text p-4 rounded-lg mb-6" role="alert">
-                            <p className="font-bold">An Error Occurred</p>
-                            <p>{dataError || formError}</p>
-                        </div>
-                    )}
                     {!isTrelloConfigured && <TrelloConfigBanner onGoToSettings={() => setActiveView('settings')} />}
                     <SchedulerStatus key={statusKey} isConfigured={isTrelloConfigured} onStatusUpdate={() => setStatusKey(prev => prev + 1)} />
                     

@@ -4,6 +4,7 @@
  * in the multi-select dropdown, improving the user experience.
  */
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { toast } from 'react-toastify';
 
 // --- Helper Data (Specific to this form) ---
 const DAYS_OF_WEEK = [ { id: '1', name: 'Mon' }, { id: '2', name: 'Tue' }, { id: '3', name: 'Wed' }, { id: '4', name: 'Thu' }, { id: '5', name: 'Fri' }, { id: '6', name: 'Sat' }, { id: '0', name: 'Sun' }];
@@ -234,7 +235,6 @@ const ScheduleForm = ({
     
     const [formData, setFormData] = useState(initialData);
     const [showDates, setShowDates] = useState(!!(initialData.start_date || initialData.end_date));
-    const [error, setError] = useState('');
     const [warning, setWarning] = useState(''); // State for non-blocking warnings
     const [activeTab, setActiveTab] = useState('main');
     const formRef = useRef(null);
@@ -302,12 +302,11 @@ const ScheduleForm = ({
 
     const handleFormSubmit = (e) => {
         e.preventDefault();
-        setError('');
         if (!formData.title || !formData.owner_name) {
-            setError('Title and Owner are required fields.');
+            toast.error('Title and Owner are required fields.');
             return;
         }
-        onSubmit(formData, setError);
+        onSubmit(formData);
     };
 
     const handleToggleActive = async () => {
@@ -316,7 +315,7 @@ const ScheduleForm = ({
             await onToggleActive(formData.id, newStatus);
             setFormData(prev => ({ ...prev, is_active: newStatus }));
         } catch (err) {
-            setError('Failed to update schedule status.');
+            toast.error('Failed to update schedule status.');
         }
     };
 
@@ -509,8 +508,6 @@ const ScheduleForm = ({
                         />
                     </div>
                 )}
-
-                {error && <p className="text-danger-text bg-danger-surface p-3 rounded-lg text-center">{error}</p>}
 
                 <div className="flex items-center justify-between space-x-4 pt-4">
                     <div className="flex items-center space-x-4">
