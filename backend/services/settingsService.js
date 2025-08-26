@@ -6,11 +6,12 @@ import pool from '../db.js';
  * exist in the database.
  * @returns {Promise<object>} A promise that resolves to the application settings object.
  */
-export const loadSettings = async () => {
+export const loadSettings = async (client) => {
     console.log('[INFO] Loading settings from database...');
-    const client = await pool.connect();
+    const shouldReleaseClient = !client;
+    const dbClient = client || await pool.connect();
     try {
-        const { rows } = await client.query('SELECT key, value FROM settings');
+        const { rows } = await dbClient.query('SELECT key, value FROM settings');
         const settingsFromDB = rows.reduce((acc, row) => {
             acc[row.key] = row.value;
             return acc;
@@ -28,7 +29,7 @@ export const loadSettings = async () => {
         for (const key in defaultSettings) {
             if (!settingsFromDB.hasOwnProperty(key)) {
                 console.log(`[INFO] Setting '${key}' not found in DB, inserting default.`);
-                await client.query('INSERT INTO settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO NOTHING', [key, defaultSettings[key]]);
+                await dbClient.query('INSERT INTO settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO NOTHING', [key, defaultSettings[key]]);
                 settingsFromDB[key] = defaultSettings[key];
             }
         }
@@ -41,6 +42,8 @@ export const loadSettings = async () => {
         // Re-throw the error to be handled by the main server start function
         throw err;
     } finally {
-        client.release();
+        if (shouldReleaseClient && dbClient) {
+            dbClient.release();
+        }
     }
 };

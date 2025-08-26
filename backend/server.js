@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
+import cookieParser from 'cookie-parser';
 import { fileURLToPath } from 'url';
 
 // --- Imports for Modular Structure ---
@@ -30,10 +31,12 @@ const devOrigin = 'http://localhost:3000';
 const prodOrigin = undefined;
 const corsOptions = {
     origin: process.env.NODE_ENV === 'production' ? prodOrigin : devOrigin,
-    optionsSuccessStatus: 200
+    optionsSuccessStatus: 200,
+    credentials: true
 };
 app.use(cors(corsOptions));
 app.use(express.json());
+app.use(cookieParser());
 
 // --- Global Application State ---
 // This object will be populated on startup by the settingsService.

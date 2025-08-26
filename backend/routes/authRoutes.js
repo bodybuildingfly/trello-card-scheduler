@@ -1,5 +1,6 @@
 import express from 'express';
-import { loginUser } from '../controllers/authController.js';
+import { loginUser, refreshToken, logoutUser } from '../controllers/authController.js';
+import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
@@ -11,5 +12,15 @@ const router = express.Router();
 // @desc    Authenticate user & get token
 // @access  Public
 router.post('/login', loginUser);
+
+// @route   POST /api/auth/refresh
+// @desc    Refresh access token
+// @access  Public (relies on httpOnly cookie)
+router.post('/refresh', refreshToken);
+
+// @route   POST /api/auth/logout
+// @desc    Logout user and clear refresh token
+// @access  Public (relies on httpOnly cookie)
+router.post('/logout', logoutUser);
 
 export default router;

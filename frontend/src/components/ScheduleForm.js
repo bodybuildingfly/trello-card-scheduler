@@ -156,7 +156,7 @@ const ChecklistManager = ({ items, name, onNameChange, onItemsChange }) => {
  * @description A multi-select dropdown component for Trello labels.
  * @param {object} props - The component props.
  */
-const MultiSelectDropdown = ({ options, selectedIds, onChange }) => {
+const MultiSelectDropdown = ({ options, selectedIds, onChange, placeholder = 'Select items...' }) => {
     const [isOpen, setIsOpen] = useState(false);
     const wrapperRef = useRef(null);
 
@@ -170,14 +170,14 @@ const MultiSelectDropdown = ({ options, selectedIds, onChange }) => {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    const handleSelect = (labelId) => {
-        const newSelectedIds = selectedIds.includes(labelId)
-            ? selectedIds.filter(id => id !== labelId)
-            : [...selectedIds, labelId];
+    const handleSelect = (itemId) => {
+        const newSelectedIds = selectedIds.includes(itemId)
+            ? selectedIds.filter(id => id !== itemId)
+            : [...selectedIds, itemId];
         onChange(newSelectedIds);
     };
 
-    const selectedLabels = options.filter(opt => selectedIds.includes(opt.id));
+    const selectedItems = options.filter(opt => selectedIds.includes(opt.id));
 
     return (
         <div className="relative" ref={wrapperRef}>
@@ -186,8 +186,8 @@ const MultiSelectDropdown = ({ options, selectedIds, onChange }) => {
                 onClick={() => setIsOpen(!isOpen)}
                 className="form-input text-left w-full flex justify-between items-center"
             >
-                <span className={`truncate ${selectedLabels.length === 0 ? 'text-text-muted' : ''}`}>
-                    {selectedLabels.length > 0 ? selectedLabels.map(l => l.name).join(', ') : 'Select labels...'}
+                <span className={`truncate ${selectedItems.length === 0 ? 'text-text-muted' : ''}`}>
+                    {selectedItems.length > 0 ? selectedItems.map(item => item.name).join(', ') : placeholder}
                 </span>
                 <svg className="w-4 h-4 ml-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
             </button>
@@ -262,14 +262,18 @@ const ScheduleForm = ({
             trigger_hour: String(initialData.trigger_hour || '09').padStart(2, '0'),
             trigger_minute: String(initialData.trigger_minute || '00').padStart(2, '0'),
             trello_label_ids: initialData.trello_label_ids || [],
+            trello_member_ids: initialData.trello_member_ids || [],
         };
         setWarning('');
 
-        if (isEditing && initialData.owner_name && trelloMembers.length > 0) {
-            const ownerExists = trelloMembers.some(member => member.fullName === initialData.owner_name);
-            if (!ownerExists) {
-                setWarning(`Warning: The previously assigned user "${initialData.owner_name}" is no longer a member of this Trello board. Please select a new assignee.`);
-                dataToSet.owner_name = '';
+        if (isEditing && initialData.trello_member_ids && initialData.trello_member_ids.length > 0 && trelloMembers.length > 0) {
+            const memberIdsOnBoard = trelloMembers.map(m => m.id);
+            const stillOnBoard = initialData.trello_member_ids.filter(id => memberIdsOnBoard.includes(id));
+            const removedMembers = initialData.trello_member_ids.length - stillOnBoard.length;
+
+            if (removedMembers > 0) {
+                setWarning(`Warning: ${removedMembers} previously assigned user(s) are no longer on this Trello board. Please review the assignees.`);
+                dataToSet.trello_member_ids = stillOnBoard;
             }
         }
         
@@ -302,8 +306,8 @@ const ScheduleForm = ({
 
     const handleFormSubmit = (e) => {
         e.preventDefault();
-        if (!formData.title || !formData.owner_name) {
-            toast.error('Title and Owner are required fields.');
+        if (!formData.title || !formData.trello_member_ids || formData.trello_member_ids.length === 0) {
+            toast.error('Card Title and Assign to Member are required fields.');
             return;
         }
         onSubmit(formData);
@@ -367,11 +371,13 @@ const ScheduleForm = ({
                                 <input type="text" name="title" value={formData.title} onChange={handleInputChange} required className="form-input" placeholder="e.g., Review weekly metrics" />
                             </div>
                             <div>
-                                <label htmlFor="owner_name" className="form-label">Assign to Member <span className="text-danger">*</span></label>
-                                <select name="owner_name" id="owner_name" value={formData.owner_name} onChange={handleInputChange} required className="form-input">
-                                    <option value="" disabled>Select a Trello member</option>
-                                    {trelloMembers.map(member => <option key={member.id} value={member.fullName}>{member.fullName}</option>)}
-                                </select>
+                                <label htmlFor="trello_member_ids" className="form-label">Assign to Member <span className="text-danger">*</span></label>
+                                <MultiSelectDropdown
+                                    options={trelloMembers.map(member => ({ id: member.id, name: member.fullName }))}
+                                    selectedIds={formData.trello_member_ids || []}
+                                    onChange={(newIds) => setFormData(prev => ({ ...prev, trello_member_ids: newIds }))}
+                                    placeholder="Select Trello members..."
+                                />
                             </div>
                         </div>
 
@@ -390,6 +396,7 @@ const ScheduleForm = ({
                                     options={trelloLabels}
                                     selectedIds={formData.trello_label_ids || []}
                                     onChange={(newIds) => setFormData(prev => ({ ...prev, trello_label_ids: newIds }))}
+                                    placeholder="Select labels..."
                                 />
                             </div>
                         </div>

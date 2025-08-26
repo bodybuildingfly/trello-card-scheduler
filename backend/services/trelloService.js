@@ -131,17 +131,25 @@ export const createTrelloCard = async (schedule, dueDate, appSettings) => {
         throw new Error(`Card creation failed: 'To Do List ID' is not configured in settings.`);
     }
 
-    const members = await getTrelloBoardMembers(TRELLO_API_KEY, TRELLO_API_TOKEN, TRELLO_BOARD_ID);
-    const member = members.find(m => m.fullName === schedule.owner_name);
-    if (!member) {
-        throw new Error(`Card creation failed: Trello member "${schedule.owner_name}" not found.`);
+    if (!schedule.trello_member_ids || schedule.trello_member_ids.length === 0) {
+        throw new Error(`Card creation failed: No Trello members assigned to the schedule.`);
+    }
+
+    // Optional: Verify that all member IDs are valid board members.
+    // This adds an extra layer of validation before trying to create the card.
+    const boardMembers = await getTrelloBoardMembers(TRELLO_API_KEY, TRELLO_API_TOKEN, TRELLO_BOARD_ID);
+    const boardMemberIds = boardMembers.map(m => m.id);
+    const invalidMembers = schedule.trello_member_ids.filter(id => !boardMemberIds.includes(id));
+
+    if (invalidMembers.length > 0) {
+        throw new Error(`Card creation failed: The following assigned user IDs are not on the Trello board: ${invalidMembers.join(', ')}`);
     }
 
     const cardData = {
         name: schedule.title,
         desc: schedule.description,
         idList: TRELLO_TO_DO_LIST_ID,
-        idMembers: [member.id],
+        idMembers: schedule.trello_member_ids,
         due: dueDate.toISOString()
     };
 

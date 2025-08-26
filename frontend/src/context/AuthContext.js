@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import apiClient, { setupInterceptors } from '../api'; // Import the new setup function
 
 // 1. Create the context
@@ -22,20 +22,25 @@ export const AuthProvider = ({ children }) => {
     const [isLoading, setIsLoading] = useState(true);
 
     /**
-     * @description Logs out the current user.
+     * @description Logs out the current user by calling the logout endpoint and clearing local state.
      */
-    const logout = () => {
-        localStorage.removeItem('userInfo');
-        delete apiClient.defaults.headers.common['Authorization'];
-        setUser(null);
-    };
+    const logout = useCallback(async () => {
+        try {
+            await apiClient.post('/api/auth/logout');
+        } catch (error) {
+            console.error("Logout failed on server, but proceeding with client-side cleanup.", error);
+        } finally {
+            localStorage.removeItem('userInfo');
+            delete apiClient.defaults.headers.common['Authorization'];
+            setUser(null);
+        }
+    }, []);
 
     // This useEffect runs once on app startup to set up the interceptor.
     useEffect(() => {
-        // We pass the logout function to the interceptor setup.
-        // Now, the apiClient knows how to log a user out if it gets a 401 error.
-        setupInterceptors(logout);
-    }, []);
+        // Pass the auth context functions to the interceptor setup.
+        setupInterceptors({ setUser, logout });
+    }, [logout]);
 
     // On initial app load, check if user info is stored in localStorage
     useEffect(() => {
@@ -51,7 +56,7 @@ export const AuthProvider = ({ children }) => {
             logout(); // Call logout to clear any corrupted data
         }
         setIsLoading(false);
-    }, []);
+    }, [logout]);
 
     /**
      * @description Logs in a user by calling the API and storing the returned user info.
