@@ -87,8 +87,16 @@ function App() {
 
     // Filter state
     const [filterOwner, setFilterOwner] = useState('all');
-    const [filterFrequency, setFilterFrequency] = useState('all');
     const [filterTitle, setFilterTitle] = useState('');
+    const [hideDisabled, setHideDisabled] = useState(() => {
+        try {
+            const item = window.localStorage.getItem('hideDisabled');
+            return item ? JSON.parse(item) : false;
+        } catch (error) {
+            console.error(error);
+            return false;
+        }
+    });
 
     const { isAuthenticated, user, logout, isAdmin } = useAuth();
 
@@ -97,16 +105,16 @@ function App() {
         for (const category in schedules) {
             const filteredSchedules = schedules[category].filter(schedule => {
                 const ownerMatch = filterOwner === 'all' || schedule.owner_name === filterOwner;
-                const frequencyMatch = filterFrequency === 'all' || schedule.frequency === filterFrequency;
                 const titleMatch = filterTitle === '' || schedule.title.toLowerCase().includes(filterTitle.toLowerCase());
-                return ownerMatch && frequencyMatch && titleMatch;
+                const statusMatch = !hideDisabled || schedule.is_active;
+                return ownerMatch && titleMatch && statusMatch;
             });
             if (filteredSchedules.length > 0) {
                 filtered[category] = filteredSchedules;
             }
         }
         return filtered;
-    }, [schedules, filterOwner, filterFrequency, filterTitle]);
+    }, [schedules, filterOwner, filterTitle, hideDisabled]);
 
     // --- Data Fetching and Lifecycle ---
     useEffect(() => {
@@ -142,6 +150,14 @@ function App() {
             console.error(error);
         }
     }, [collapsedCategories]);
+
+    useEffect(() => {
+        try {
+            window.localStorage.setItem('hideDisabled', JSON.stringify(hideDisabled));
+        } catch (error) {
+            console.error(error);
+        }
+    }, [hideDisabled]);
 
     // --- Event Handlers ---
     const handleFormSubmit = async (submittedFormData) => {
@@ -308,13 +324,16 @@ function App() {
                                     <option value="all">All Assignees</option>
                                     {trelloMembers.map(member => <option key={member.id} value={member.fullName}>{member.fullName}</option>)}
                                 </select>
-                                <select value={filterFrequency} onChange={e => setFilterFrequency(e.target.value)} className="form-input">
-                                    <option value="all">All Frequencies</option>
-                                    <option value="daily">Daily</option>
-                                    <option value="weekly">Weekly</option>
-                                    <option value="monthly">Monthly</option>
-                                    <option value="yearly">Yearly</option>
-                                </select>
+                                <div className="flex items-center">
+                                    <input
+                                        type="checkbox"
+                                        id="hide-disabled"
+                                        checked={hideDisabled}
+                                        onChange={e => setHideDisabled(e.target.checked)}
+                                        className="h-4 w-4 rounded border-border-color text-primary focus:ring-primary"
+                                    />
+                                    <label htmlFor="hide-disabled" className="ml-2 block text-sm text-text-primary">Hide Disabled</label>
+                                </div>
                             </div>
                         </div>
                     </div>

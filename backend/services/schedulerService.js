@@ -41,6 +41,11 @@ export const calculateNextDueDate = (schedule, lastDueDate, now = new Date()) =>
                 }
                 break;
             case 'monthly':
+                if (frequency_details === 'last') {
+                    // To avoid month-end rollover issues (e.g., Jan 31 + 1 month = Mar 3),
+                    // set the day to 1 before advancing the month.
+                    nextDate.setDate(1);
+                }
                 nextDate.setMonth(nextDate.getMonth() + interval);
                 break;
             case 'yearly':
@@ -74,7 +79,14 @@ export const calculateNextDueDate = (schedule, lastDueDate, now = new Date()) =>
             }
         }
     } else if (frequency === 'monthly') {
-        nextDate.setDate(parseInt(frequency_details, 10) || 1);
+        if (frequency_details === 'last') {
+            // Set to the last day of the month by going to the next month and getting day 0
+            nextDate.setDate(1);
+            nextDate.setMonth(nextDate.getMonth() + 1);
+            nextDate.setDate(0);
+        } else {
+            nextDate.setDate(parseInt(frequency_details, 10) || 1);
+        }
     } else if (frequency === 'yearly') {
         const [month, day] = (frequency_details || '1-1').split('-').map(d => parseInt(d, 10));
         nextDate.setFullYear(nextDate.getFullYear(), month - 1, day);

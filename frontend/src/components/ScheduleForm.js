@@ -6,6 +6,17 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { toast } from 'react-toastify';
 
+const getFrequencyLabel = (frequency, interval) => {
+    const labels = {
+        daily: 'day',
+        weekly: 'week',
+        monthly: 'month',
+        yearly: 'year',
+    };
+    const unit = labels[frequency] || frequency;
+    return interval > 1 ? `${unit}s` : unit;
+};
+
 // --- Helper Data (Specific to this form) ---
 const DAYS_OF_WEEK = [ { id: '1', name: 'Mon' }, { id: '2', name: 'Tue' }, { id: '3', name: 'Wed' }, { id: '4', name: 'Thu' }, { id: '5', name: 'Fri' }, { id: '6', name: 'Sat' }, { id: '0', name: 'Sun' }];
 const MONTHS_OF_YEAR = [ { id: '1', name: 'January' }, { id: '2', name: 'February' }, { id: '3', name: 'March' }, { id: '4', name: 'April' }, { id: '5', name: 'May' }, { id: '6', name: 'June' }, { id: '7', name: 'July' }, { id: '8', name: 'August' }, { id: '9', name: 'September' }, { id: '10', name: 'October' }, { id: '11', name: 'November' }, { id: '12', name: 'December' }];
@@ -419,7 +430,7 @@ const ScheduleForm = ({
                                             <label htmlFor="frequency_interval" className="form-label">Repeat Every</label>
                                             <div className="flex items-center">
                                                 <input type="number" name="frequency_interval" value={formData.frequency_interval} onChange={handleInputChange} min="1" className="form-input w-20 mr-2" />
-                                                <span className="text-text-secondary">{formData.frequency}{formData.frequency_interval > 1 ? 's' : ''}</span>
+                                                <span className="text-text-secondary">{getFrequencyLabel(formData.frequency, formData.frequency_interval)}</span>
                                             </div>
                                         </div>
                                     )}
@@ -442,6 +453,7 @@ const ScheduleForm = ({
                                         <label htmlFor="frequency_details" className="form-label">Repeat on Day</label>
                                         <select name="frequency_details" value={formData.frequency_details} onChange={handleInputChange} className="form-input">
                                             {DAYS_OF_MONTH.map(d => <option key={d} value={d}>{d}</option>)}
+                                            <option value="last">Last day</option>
                                         </select>
                                     </div>
                                 )}
