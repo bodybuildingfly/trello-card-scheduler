@@ -1,5 +1,7 @@
 # Trello Card Scheduler
 
+**Current Version:** 1.0.0
+
 The Trello Card Scheduler is a full-stack web application designed to automate the creation of recurring Trello cards. It provides a user-friendly interface for creating detailed schedules and a powerful backend scheduler to handle the card creation process automatically. The application features a complete authentication system with role-based access for regular users and administrators.
 
 <img width="1668" height="1246" alt="TrelloCardSchedulerScreenshot" src="https://github.com/user-attachments/assets/d071ac88-ca55-4b2f-836d-28c9d4ce6e2e" />
@@ -25,6 +27,7 @@ The Trello Card Scheduler is a full-stack web application designed to automate t
     * Optional start and end dates.
 * **Manual Card Creation:** A "Create Now" button allows users to manually trigger the creation of a Trello card for any schedule, outside of its regular recurring timeline.
 * **Clone Schedules:** Users can easily duplicate an existing schedule with a single click, making it fast and easy to create similar schedules.
+* **Instant Feedback Notifications:** Receive real-time toast notifications for actions like creating, updating, or deleting schedules, providing immediate confirmation of your operations.
 
 ### For Administrators:
 
@@ -36,6 +39,93 @@ The Trello Card Scheduler is a full-stack web application designed to automate t
     * Delete existing users.
     * Reset a user's password, which generates a new, secure temporary password.
 * **Audit Log:** A detailed audit log provides a chronological record of all important events in the application, including user actions (like creating a schedule or deleting a user) and system events (like a scheduler run).
+* **Role-Based Access Control (RBAC):** The application enforces a strict separation of permissions between 'admin' and 'user' roles, ensuring system security and data integrity.
+
+## Technology Stack
+
+The application is built with the following technologies:
+
+### Backend
+*   **Node.js:** A JavaScript runtime for the server-side environment.
+*   **Express.js:** A minimal and flexible Node.js web application framework.
+*   **PostgreSQL:** A powerful, open-source object-relational database system.
+*   **JSON Web Tokens (JWT):** Used for creating secure authentication tokens.
+*   **bcrypt.js:** A library for hashing passwords.
+*   **node-cron:** A task scheduler for running background jobs.
+
+### Frontend
+*   **React:** A JavaScript library for building user interfaces.
+*   **Tailwind CSS:** A utility-first CSS framework for rapid UI development.
+*   **Axios:** A promise-based HTTP client for making requests to the backend.
+*   **React Testing Library & Jest:** For component and unit testing.
+*   **Cypress:** For end-to-end testing.
+
+## Local Development Setup
+
+To set up and run this project on your local machine, follow the steps below.
+
+### Prerequisites
+
+*   **Node.js & npm:** You must have Node.js (version 18 or higher is recommended) and npm installed.
+*   **PostgreSQL:** A running instance of a PostgreSQL database is required.
+
+### 1. Clone the Repository
+
+First, clone the project from GitHub.
+```bash
+git clone <your-repository-url>
+cd <repository-name>
+```
+
+### 2. Install Dependencies
+
+The project uses a monorepo structure with dependencies at the root, backend, and frontend levels. Install all of them:
+
+```bash
+# Install root-level dependencies
+npm install
+
+# Install backend dependencies
+npm install --prefix backend
+
+# Install frontend dependencies
+npm install --prefix frontend
+```
+
+### 3. Set Up Environment Variables
+
+The backend requires a set of environment variables to connect to the database and manage security. You must export these variables in the shell session where you run the application.
+
+For example, you can add these to your `.bashrc` or `.zshrc` file, or use a tool like `direnv`.
+
+**Required Variables:**
+```bash
+# PostgreSQL Database Connection
+export DB_HOST=localhost
+export DB_USER=your_db_user
+export DB_PASSWORD=your_db_password
+export DB_NAME=trello_scheduler
+export DB_PORT=5432
+
+# JSON Web Token Secret
+export JWT_SECRET=your_super_secret_random_string_for_jwt
+
+# Optional: Initial Admin Credentials
+# If not set, defaults to admin/changeme
+export ADMIN_USERNAME=admin
+export ADMIN_PASSWORD=a_secure_password_for_the_admin
+```
+
+### 4. Run the Application
+
+Once all dependencies are installed and the environment variables are set, you can start the entire application (both backend and frontend) with a single command from the **root directory**:
+
+```bash
+npm run dev
+```
+This command will concurrently start the backend server in development mode (with `nodemon`) and the frontend React development server.
+
+The frontend will be available at `http://localhost:3000`, and the backend API will be running on `http://localhost:5000`.
 
 ## Deployment with Docker
 
