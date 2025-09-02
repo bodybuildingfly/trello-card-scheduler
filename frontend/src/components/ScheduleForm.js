@@ -272,6 +272,9 @@ const ScheduleForm = ({
             frequency_interval: parseInt(initialData.frequency_interval, 10) || 1,
             trigger_hour: String(initialData.trigger_hour || '09').padStart(2, '0'),
             trigger_minute: String(initialData.trigger_minute || '00').padStart(2, '0'),
+            start_hour: initialData.start_hour ?? '',
+            start_minute: initialData.start_minute ?? '',
+            start_ampm: initialData.start_ampm ?? '',
             trello_label_ids: initialData.trello_label_ids || [],
             trello_member_ids: initialData.trello_member_ids || [],
         };
@@ -317,10 +320,23 @@ const ScheduleForm = ({
 
     const handleFormSubmit = (e) => {
         e.preventDefault();
-        if (!formData.title || !formData.trello_member_ids || formData.trello_member_ids.length === 0) {
+        
+        const { title, trello_member_ids, start_hour, start_minute, start_ampm } = formData;
+
+        // Validation for Start Time
+        const startTimeFields = [start_hour, start_minute, start_ampm];
+        const populatedStartTimeFields = startTimeFields.filter(Boolean);
+        if (populatedStartTimeFields.length > 0 && populatedStartTimeFields.length < 3) {
+            toast.error("Please fill out all start time fields (hour, minute, and am/pm) or leave them all empty.");
+            return;
+        }
+
+        // Validation for required fields
+        if (!title || !trello_member_ids || trello_member_ids.length === 0) {
             toast.error('Card Title and Assign to Member are required fields.');
             return;
         }
+
         onSubmit(formData);
     };
 
@@ -471,22 +487,43 @@ const ScheduleForm = ({
                                     </div>
                                 )}
                                 {formData.frequency !== 'once' && (
-                                    <div>
-                                        <label className="form-label">Due at</label>
-                                        <div className="flex items-center gap-2">
-                                            <select name="trigger_hour" value={formData.trigger_hour} onChange={handleInputChange} className="form-input">
-                                                {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map(h => <option key={h} value={h}>{h}</option>)}
-                                            </select>
-                                            <span>:</span>
-                                            <select name="trigger_minute" value={formData.trigger_minute} onChange={handleInputChange} className="form-input">
-                                                {Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0')).map(m => <option key={m} value={m}>{m}</option>)}
-                                            </select>
-                                            <select name="trigger_ampm" value={formData.trigger_ampm} onChange={handleInputChange} className="form-input">
-                                                <option value="am">AM</option>
-                                                <option value="pm">PM</option>
-                                            </select>
+                                    <>
+                                        <div>
+                                            <label className="form-label">Start time</label>
+                                            <div className="flex items-center gap-2">
+                                                <select name="start_hour" value={formData.start_hour} onChange={handleInputChange} className="form-input">
+                                                    <option value="">--</option>
+                                                    {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map(h => <option key={h} value={h}>{h}</option>)}
+                                                </select>
+                                                <span>:</span>
+                                                <select name="start_minute" value={formData.start_minute} onChange={handleInputChange} className="form-input">
+                                                    <option value="">--</option>
+                                                    {Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0')).map(m => <option key={m} value={m}>{m}</option>)}
+                                                </select>
+                                                <select name="start_ampm" value={formData.start_ampm} onChange={handleInputChange} className="form-input">
+                                                    <option value="">--</option>
+                                                    <option value="am">AM</option>
+                                                    <option value="pm">PM</option>
+                                                </select>
+                                            </div>
                                         </div>
-                                    </div>
+                                        <div>
+                                            <label className="form-label">Due at</label>
+                                            <div className="flex items-center gap-2">
+                                                <select name="trigger_hour" value={formData.trigger_hour} onChange={handleInputChange} className="form-input">
+                                                    {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map(h => <option key={h} value={h}>{h}</option>)}
+                                                </select>
+                                                <span>:</span>
+                                                <select name="trigger_minute" value={formData.trigger_minute} onChange={handleInputChange} className="form-input">
+                                                    {Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0')).map(m => <option key={m} value={m}>{m}</option>)}
+                                                </select>
+                                                <select name="trigger_ampm" value={formData.trigger_ampm} onChange={handleInputChange} className="form-input">
+                                                    <option value="am">AM</option>
+                                                    <option value="pm">PM</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </>
                                 )}
                             </div>
 

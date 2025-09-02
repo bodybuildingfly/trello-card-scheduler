@@ -67,13 +67,13 @@ export const processCardCreationForSchedule = async (schedule, appSettings, user
     }
 
     let nextDueDate = calculateNextDueDate(schedule, lastDueDateForCalc);
-    const startDate = schedule.start_date ? new Date(schedule.start_date) : null;
+    const startDateObj = schedule.start_date ? new Date(schedule.start_date) : null;
     const endDate = schedule.end_date ? new Date(schedule.end_date) : null;
 
     // If the calculated due date is before the schedule's start date, we need to recalculate
     // using the start date as the baseline to find the *first* valid due date.
-    if (startDate && nextDueDate < startDate) {
-        nextDueDate = calculateNextDueDate(schedule, lastDueDateForCalc, startDate);
+    if (startDateObj && nextDueDate < startDateObj) {
+        nextDueDate = calculateNextDueDate(schedule, lastDueDateForCalc, startDateObj);
     }
 
     // Now that we have the correct next due date based on frequency and start date,
@@ -150,8 +150,25 @@ export const createTrelloCard = async (schedule, dueDate, appSettings) => {
         desc: schedule.description,
         idList: TRELLO_TO_DO_LIST_ID,
         idMembers: schedule.trello_member_ids,
-        due: dueDate.toISOString()
+        due: dueDate.toISOString(),
     };
+
+    if (schedule.start_hour && schedule.start_minute && schedule.start_ampm) {
+        let startHours = parseInt(schedule.start_hour, 10);
+        if (schedule.start_ampm === 'pm' && startHours < 12) {
+            startHours += 12;
+        } else if (schedule.start_ampm === 'am' && startHours === 12) { // Midnight case
+            startHours = 0;
+        }
+
+        const cardStartDate = new Date(dueDate);
+        cardStartDate.setUTCHours(startHours);
+        cardStartDate.setUTCMinutes(parseInt(schedule.start_minute, 10));
+        cardStartDate.setUTCSeconds(0);
+        cardStartDate.setUTCMilliseconds(0);
+
+        cardData.start = cardStartDate.toISOString();
+    }
 
     if (schedule.trello_label_ids && schedule.trello_label_ids.length > 0) {
         cardData.idLabels = schedule.trello_label_ids.join(',');

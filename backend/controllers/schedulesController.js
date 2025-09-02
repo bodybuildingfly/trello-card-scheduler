@@ -11,20 +11,23 @@ import { z } from 'zod';
 // --- Validation Schemas ---
 const scheduleSchema = z.object({
     title: z.string().min(1, { message: "Title is required." }),
-    description: z.string().optional(),
-    category: z.string().optional(),
+    description: z.string().optional().nullable(),
+    category: z.string().optional().nullable(),
     trello_member_ids: z.array(z.string()).min(1, { message: "At least one member must be assigned." }),
     frequency: z.enum(['daily', 'weekly', 'monthly', 'yearly']),
     frequency_interval: z.number().int().positive().optional(),
-    frequency_details: z.string().optional(),
-    trigger_hour: z.string().optional(),
-    trigger_minute: z.string().optional(),
-    trigger_ampm: z.string().optional(),
+    frequency_details: z.string().optional().nullable(),
+    trigger_hour: z.string().optional().nullable(),
+    trigger_minute: z.string().optional().nullable(),
+    trigger_ampm: z.string().optional().nullable(),
     start_date: z.string().nullable().optional(),
+    start_hour: z.string().optional().nullable(),
+    start_minute: z.string().optional().nullable(),
+    start_ampm: z.string().optional().nullable(),
     end_date: z.string().nullable().optional(),
     trello_label_ids: z.array(z.string()).optional(),
     is_active: z.boolean().optional(),
-    checklist_name: z.string().optional(),
+    checklist_name: z.string().optional().nullable(),
     checklist_items: z.array(z.object({
         item_name: z.string(),
     })).optional(),
@@ -91,18 +94,18 @@ export const createSchedule = async (req, res) => {
         return res.status(400).json({ message: "Invalid input.", errors: validationResult.error.issues });
     }
 
-    const { title, description, category, trello_member_ids, frequency, frequency_interval, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date, end_date, trello_label_ids, is_active, checklist_name, checklist_items } = validationResult.data;
+    const { title, description, category, trello_member_ids, frequency, frequency_interval, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date, start_hour, start_minute, start_ampm, end_date, trello_label_ids, is_active, checklist_name, checklist_items } = validationResult.data;
     
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
 
         const scheduleQuery = `
-            INSERT INTO schedules (title, description, category, trello_member_ids, frequency, frequency_interval, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date, end_date, trello_label_ids, is_active, checklist_name) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) 
+            INSERT INTO schedules (title, description, category, trello_member_ids, frequency, frequency_interval, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date, start_hour, start_minute, start_ampm, end_date, trello_label_ids, is_active, checklist_name) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18) 
             RETURNING *;
         `;
-        const scheduleValues = [title, description, category || 'Uncategorized', trello_member_ids, frequency, frequency_interval || 1, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date || null, end_date || null, trello_label_ids || [], is_active !== false, checklist_name];
+        const scheduleValues = [title, description, category || 'Uncategorized', trello_member_ids, frequency, frequency_interval || 1, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date || null, start_hour, start_minute, start_ampm, end_date || null, trello_label_ids || [], is_active !== false, checklist_name];
         
         const scheduleResult = await client.query(scheduleQuery, scheduleValues);
         const newSchedule = scheduleResult.rows[0];
@@ -140,7 +143,7 @@ export const updateSchedule = async (req, res) => {
     }
 
     const { id } = req.params;
-    const { title, description, category, trello_member_ids, frequency, frequency_interval, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date, end_date, trello_label_ids, is_active, checklist_name, checklist_items } = validationResult.data;
+    const { title, description, category, trello_member_ids, frequency, frequency_interval, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date, start_hour, start_minute, start_ampm, end_date, trello_label_ids, is_active, checklist_name, checklist_items } = validationResult.data;
     
     const client = await pool.connect();
     try {
@@ -156,12 +159,13 @@ export const updateSchedule = async (req, res) => {
             UPDATE schedules SET 
             title = $1, description = $2, category = $3, trello_member_ids = $4, frequency = $5, 
             frequency_interval = $6, frequency_details = $7, trigger_hour = $8, 
-            trigger_minute = $9, trigger_ampm = $10, start_date = $11, end_date = $12, 
-            trello_label_ids = $13, is_active = $14, checklist_name = $15
-            WHERE id = $16 
+            trigger_minute = $9, trigger_ampm = $10, start_date = $11, start_hour = $12, 
+            start_minute = $13, start_ampm = $14, end_date = $15, trello_label_ids = $16, 
+            is_active = $17, checklist_name = $18
+            WHERE id = $19 
             RETURNING *;
         `;
-        const scheduleValues = [title, description, category || 'Uncategorized', trello_member_ids, frequency, frequency_interval || 1, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date || null, end_date || null, trello_label_ids || [], is_active, checklist_name, id];
+        const scheduleValues = [title, description, category || 'Uncategorized', trello_member_ids, frequency, frequency_interval || 1, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date || null, start_hour, start_minute, start_ampm, end_date || null, trello_label_ids || [], is_active, checklist_name, id];
         const scheduleResult = await client.query(scheduleQuery, scheduleValues);
         const updatedSchedule = scheduleResult.rows[0];
 
@@ -309,15 +313,15 @@ export const cloneSchedule = async (req, res) => {
         };
 
         const insertScheduleQuery = `
-            INSERT INTO schedules (title, description, category, frequency, frequency_interval, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date, end_date, trello_label_ids, trello_member_ids, checklist_name) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) 
+            INSERT INTO schedules (title, description, category, frequency, frequency_interval, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date, start_hour, start_minute, start_ampm, end_date, trello_label_ids, trello_member_ids, checklist_name) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) 
             RETURNING *;
         `;
         const insertScheduleValues = [
             newScheduleData.title, newScheduleData.description, newScheduleData.category, 
             newScheduleData.frequency, newScheduleData.frequency_interval, newScheduleData.frequency_details, 
             newScheduleData.trigger_hour, newScheduleData.trigger_minute, newScheduleData.trigger_ampm, 
-            newScheduleData.start_date, newScheduleData.end_date, newScheduleData.trello_label_ids, newScheduleData.trello_member_ids,
+            newScheduleData.start_date, newScheduleData.start_hour, newScheduleData.start_minute, newScheduleData.start_ampm, newScheduleData.end_date, newScheduleData.trello_label_ids, newScheduleData.trello_member_ids,
             newScheduleData.checklist_name
         ];
 
