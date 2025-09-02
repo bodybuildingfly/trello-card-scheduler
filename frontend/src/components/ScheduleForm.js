@@ -297,8 +297,37 @@ const ScheduleForm = ({
 
     const handleInputChange = (e) => {
         const { name, value, checked } = e.target;
-        
-        if (name === 'weekly_day') {
+
+        if (name.startsWith('start_')) {
+            const newStartTime = {
+                start_hour: formData.start_hour,
+                start_minute: formData.start_minute,
+                start_ampm: formData.start_ampm,
+                [name]: value
+            };
+
+            if (value === '') {
+                // If any field is cleared, clear all
+                setFormData(prev => ({
+                    ...prev,
+                    start_hour: '',
+                    start_minute: '',
+                    start_ampm: ''
+                }));
+            } else {
+                // If a field is set and others are empty, populate them
+                const { start_hour, start_minute, start_ampm } = newStartTime;
+                if (start_hour && !start_minute && !start_ampm) {
+                    setFormData(prev => ({ ...prev, ...newStartTime, start_minute: '00', start_ampm: 'am' }));
+                } else if (start_minute && !start_hour && !start_ampm) {
+                    setFormData(prev => ({ ...prev, ...newStartTime, start_hour: '09', start_ampm: 'am' }));
+                } else if (start_ampm && !start_hour && !start_minute) {
+                    setFormData(prev => ({ ...prev, ...newStartTime, start_hour: '09', start_minute: '00' }));
+                } else {
+                    setFormData(prev => ({ ...prev, ...newStartTime }));
+                }
+            }
+        } else if (name === 'weekly_day') {
             const currentDays = formData.frequency_details ? formData.frequency_details.split(',') : [];
             const newDays = checked ? [...currentDays, value] : currentDays.filter(day => day !== value);
             setFormData(prev => ({ ...prev, frequency_details: newDays.sort().join(',') }));
@@ -321,7 +350,7 @@ const ScheduleForm = ({
     const handleFormSubmit = (e) => {
         e.preventDefault();
         
-        const { title, trello_member_ids, start_hour, start_minute, start_ampm } = formData;
+        const { title, trello_member_ids, start_hour, start_minute, start_ampm, trigger_hour, trigger_minute, trigger_ampm } = formData;
 
         // Validation for Start Time
         const startTimeFields = [start_hour, start_minute, start_ampm];
@@ -329,6 +358,24 @@ const ScheduleForm = ({
         if (populatedStartTimeFields.length > 0 && populatedStartTimeFields.length < 3) {
             toast.error("Please fill out all start time fields (hour, minute, and am/pm) or leave them all empty.");
             return;
+        }
+
+        // Validation for Start Time vs. Due Time
+        if (populatedStartTimeFields.length === 3) {
+            const get24Hour = (hour, ampm) => {
+                let h = parseInt(hour, 10);
+                if (ampm === 'pm' && h < 12) h += 12;
+                if (ampm === 'am' && h === 12) h = 0;
+                return h;
+            };
+
+            const startTotalMinutes = get24Hour(start_hour, start_ampm) * 60 + parseInt(start_minute, 10);
+            const dueTotalMinutes = get24Hour(trigger_hour, trigger_ampm) * 60 + parseInt(trigger_minute, 10);
+
+            if (startTotalMinutes >= dueTotalMinutes) {
+                toast.error("The start time must be before the due time.");
+                return;
+            }
         }
 
         // Validation for required fields

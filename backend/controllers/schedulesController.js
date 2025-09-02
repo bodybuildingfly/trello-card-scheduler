@@ -8,6 +8,15 @@ import * as trelloService from '../services/trelloService.js';
 import logAuditEvent from '../utils/logger.js';
 import { z } from 'zod';
 
+const timeToMinutes = (hour, minute, ampm) => {
+    if (!hour || !minute || !ampm) return null;
+    let h = parseInt(hour, 10);
+    const m = parseInt(minute, 10);
+    if (ampm === 'pm' && h < 12) h += 12;
+    if (ampm === 'am' && h === 12) h = 0; // Midnight case
+    return h * 60 + m;
+};
+
 // --- Validation Schemas ---
 const scheduleSchema = z.object({
     title: z.string().min(1, { message: "Title is required." }),
@@ -93,8 +102,15 @@ export const createSchedule = async (req, res) => {
     if (!validationResult.success) {
         return res.status(400).json({ message: "Invalid input.", errors: validationResult.error.issues });
     }
-
+    
     const { title, description, category, trello_member_ids, frequency, frequency_interval, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date, start_hour, start_minute, start_ampm, end_date, trello_label_ids, is_active, checklist_name, checklist_items } = validationResult.data;
+
+    const startTimeInMinutes = timeToMinutes(start_hour, start_minute, start_ampm);
+    const dueTimeInMinutes = timeToMinutes(trigger_hour, trigger_minute, trigger_ampm);
+
+    if (startTimeInMinutes !== null && dueTimeInMinutes !== null && startTimeInMinutes >= dueTimeInMinutes) {
+        return res.status(400).json({ message: "Validation failed.", errors: [{ path: ['start_hour'], message: 'Start time must be before due time.' }] });
+    }
     
     const client = await pool.connect();
     try {
@@ -145,6 +161,13 @@ export const updateSchedule = async (req, res) => {
     const { id } = req.params;
     const { title, description, category, trello_member_ids, frequency, frequency_interval, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date, start_hour, start_minute, start_ampm, end_date, trello_label_ids, is_active, checklist_name, checklist_items } = validationResult.data;
     
+    const startTimeInMinutes = timeToMinutes(start_hour, start_minute, start_ampm);
+    const dueTimeInMinutes = timeToMinutes(trigger_hour, trigger_minute, trigger_ampm);
+
+    if (startTimeInMinutes !== null && dueTimeInMinutes !== null && startTimeInMinutes >= dueTimeInMinutes) {
+        return res.status(400).json({ message: "Validation failed.", errors: [{ path: ['start_hour'], message: 'Start time must be before due time.' }] });
+    }
+
     const client = await pool.connect();
     try {
         await client.query('BEGIN');

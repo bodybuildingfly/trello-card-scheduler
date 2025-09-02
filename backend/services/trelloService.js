@@ -162,10 +162,11 @@ export const createTrelloCard = async (schedule, dueDate, appSettings) => {
         }
 
         const cardStartDate = new Date(dueDate);
-        cardStartDate.setUTCHours(startHours);
-        cardStartDate.setUTCMinutes(parseInt(schedule.start_minute, 10));
-        cardStartDate.setUTCSeconds(0);
-        cardStartDate.setUTCMilliseconds(0);
+        // Use local time setters to match the timezone context of the due date
+        cardStartDate.setHours(startHours);
+        cardStartDate.setMinutes(parseInt(schedule.start_minute, 10));
+        cardStartDate.setSeconds(0);
+        cardStartDate.setMilliseconds(0);
 
         cardData.start = cardStartDate.toISOString();
     }
