@@ -172,7 +172,7 @@ export const updateSchedule = async (req, res) => {
     try {
         await client.query('BEGIN');
 
-        const beforeResult = await pool.query('SELECT * FROM schedules WHERE id = $1', [id]);
+        const beforeResult = await client.query('SELECT * FROM schedules WHERE id = $1', [id]);
         if (beforeResult.rows.length === 0) {
             await client.query('ROLLBACK');
             return res.status(404).json({ error: 'Schedule not found' });
