@@ -1,0 +1,50 @@
+# .github/workflows/release.yml
+
+name: Release
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    # The release job needs permissions to write to the repository
+    permissions:
+      contents: write # to create release
+      issues: write # to comment on released issues
+      pull-requests: write # to comment on released pull requests
+      id-token: write # to sign the release
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          # This is required to allow semantic-release to push changes back to the repo
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          cache: 'npm'
+
+      # Install root dependencies FIRST so the versioning script works
+      - name: Install Root Dependencies
+        run: npm ci
+
+      # Install frontend dependencies for any potential checks
+      - name: Install Frontend Dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      # Install backend dependencies for any potential checks
+      - name: Install Backend Dependencies
+        working-directory: ./backend
+        run: npm ci
+
+      - name: Run Semantic Release
+        run: npx semantic-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
