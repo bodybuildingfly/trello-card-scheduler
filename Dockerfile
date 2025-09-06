@@ -42,24 +42,6 @@ WORKDIR /app
 # Set the environment to production. This tells Express to run in an optimized mode.
 ENV NODE_ENV=production
 
-# Add a build argument to control database setup.
-# Default to 'false' to use an external database.
-ARG USE_LOCAL_DB=false
-
-# Set an environment variable from the build argument.
-# This makes it accessible to scripts and applications inside the container.
-ENV USE_LOCAL_DB=${USE_LOCAL_DB}
-
-# Conditionally install PostgreSQL if USE_LOCAL_DB is true.
-# This block is only executed if the build argument is passed as --build-arg USE_LOCAL_DB=true
-RUN if [ "${USE_LOCAL_DB}" = "true" ]; then \
-    apk add --no-cache postgresql postgresql-contrib shadow; \
-    mkdir -p /var/run/postgresql; \
-    chown -R postgres:postgres /var/run/postgresql; \
-    mkdir -p /var/lib/postgresql/data; \
-    chown -R postgres:postgres /var/lib/postgresql/data; \
-  fi
-
 # Copy the backend's package files from the cloner stage.
 COPY --from=source-cloner /app/backend/package*.json ./backend/
 
@@ -73,18 +55,8 @@ COPY --from=source-cloner /app/backend/ ./backend/
 # that the Express server will use to serve the frontend.
 COPY --from=build-stage /app/frontend/build ./build
 
-# Copy the entrypoint script into the container.
-# This script will handle starting PostgreSQL and then the main application.
-COPY docker-entrypoint.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
-
 # The server will run on port 5000 inside the container.
 EXPOSE 5000
 
-# Use the entrypoint script to start the container.
-# This allows for custom startup logic, like initializing the database.
-ENTRYPOINT ["docker-entrypoint.sh"]
-
-# The default command if the entrypoint script is used.
-# This will be executed by the entrypoint script after it's done.
+# The command to start the Node.js server in production mode.
 CMD ["npm", "start", "--prefix", "backend"]
