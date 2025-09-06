@@ -129,15 +129,31 @@ The frontend will be available at `http://localhost:3000`, and the backend API w
 
 This application is designed to be deployed as a single Docker container.
 
+### Database Configuration
+
+The Docker container for this application can be configured to run in one of two modes:
+
+1.  **External Database (Default):** The container connects to a PostgreSQL database that you provide and manage separately. This is the recommended approach for production environments.
+2.  **Local Database (For Testing & Simple Deployments):** The container includes a built-in PostgreSQL instance. When you start the container, it will also start its own database server, initialized and ready to use. This is convenient for local testing or simple, all-in-one deployments.
+
 ### Building the Production Image
 
 The `Dockerfile` for this project is configured to clone the latest version of the source code directly from the `main` branch on GitHub. This means you do not need to have the source code on your local machine to build the image.
 
-To build the production-ready Docker image, run the following command:
+To build the production-ready Docker image, run one of the following commands depending on your needs.
 
+#### Building with an External Database (Default)
+This is the standard build command. The resulting image will require connection details for an external PostgreSQL database.
 ```bash
 docker build -t trello-card-scheduler .
 ```
+
+#### Building with a Local Database
+To create an image that includes its own PostgreSQL server, use the `USE_LOCAL_DB` build argument.
+```bash
+docker build --build-arg USE_LOCAL_DB=true -t trello-card-scheduler-local .
+```
+It's a good practice to use a different tag (e.g., `-local`) for this image to distinguish it from the standard one.
 
 **Note on Rebuilding:** Because the `Dockerfile` clones the repository, Docker's build cache will not automatically detect when new code has been pushed to GitHub. If you need to rebuild the image to get the latest updates, you must use the `--no-cache` flag to force a fresh clone of the repository.
 
@@ -147,9 +163,10 @@ docker build --no-cache -t trello-card-scheduler .
 
 ### Running the Container
 
-To run the application, you must provide the following environment variables to the `docker run` command.
+To run the application, you must provide environment variables to the `docker run` command. The required variables depend on whether you are using an external or local database.
 
-#### Required Environment Variables
+#### Running with an External Database
+When using the standard image, you must provide the following environment variables:
 
 * **Database Connection:**
     * `DB_HOST`: The hostname or IP address of your PostgreSQL database.
@@ -161,6 +178,23 @@ To run the application, you must provide the following environment variables to 
     * `JWT_SECRET`: A long, random, and secret string used to sign authentication tokens.
 * **Timezone:**
     * `TZ`: The timezone for the scheduler to run in (e.g., `"America/New_York"`).
+
+#### Running with a Local Database
+When using the image built with `USE_LOCAL_DB=true`, the container runs its own PostgreSQL server. The following environment variables are required:
+
+* **JWT Secret:**
+    * `JWT_SECRET`: A long, random, and secret string used to sign authentication tokens.
+* **Timezone:**
+    * `TZ`: The timezone for the scheduler to run in (e.g., `"America/New_York"`).
+
+The `DB_*` variables are now **optional**. If you do not provide them, the entrypoint script will use the following default credentials for the local database:
+*   **User:** `tcs_user`
+*   **Password:** `tcs_pass`
+*   **Database:** `tcs_db`
+*   **Host:** `localhost`
+*   **Port:** `5432`
+
+You can still provide `DB_*` variables to override these defaults if you wish.
 
 #### Optional Admin Credentials
 

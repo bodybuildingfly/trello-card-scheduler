@@ -4,7 +4,6 @@
 
 # Local environment and config files
 .env
-trello-config.json
 
 # Node.js dependency folders (these will be installed inside the container)
 frontend/node_modules

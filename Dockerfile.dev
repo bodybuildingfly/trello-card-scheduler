@@ -1,0 +1,41 @@
+# Use an official Node.js image. Alpine is small and efficient.
+FROM node:18-alpine
+
+# Set the working directory inside the container. All subsequent commands run from here.
+WORKDIR /app
+
+# --- Dependency Installation ---
+# This section copies ONLY the package files and installs dependencies.
+# Docker caches this layer, so it only re-runs if your package files change,
+# speeding up subsequent builds significantly.
+
+# 1. Install backend dependencies
+# The --prefix flag tells npm to run the command in a specific subdirectory.
+COPY backend/package*.json ./backend/
+RUN npm install --prefix backend
+
+# 2. Install frontend dependencies
+COPY frontend/package*.json ./frontend/
+RUN npm install --prefix frontend
+
+# 3. Install root-level dependencies (for 'concurrently')
+COPY package*.json ./
+RUN npm install
+
+# --- Source Code Copy ---
+# Copy the rest of your application's source code.
+# Note: In development, this is less critical because the docker-compose.yml
+# file will mount your local directory as a volume, overwriting this copy.
+# This ensures your code changes are reflected instantly.
+COPY . .
+
+# --- Port Exposure ---
+# Expose the ports for the React development server and the backend API server.
+EXPOSE 3000
+EXPOSE 5000
+
+# --- Start Command ---
+# This is the command that will run when the container starts.
+# It executes the 'dev' script from the root package.json, which uses
+# 'concurrently' to start both the backend and frontend dev servers.
+CMD ["npm", "run", "dev"]
