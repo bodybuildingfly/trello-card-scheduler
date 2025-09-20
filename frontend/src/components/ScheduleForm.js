@@ -5,6 +5,22 @@
  */
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { toast } from 'react-toastify';
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+} from '@dnd-kit/core';
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    verticalListSortingStrategy,
+    useSortable
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 const getFrequencyLabel = (frequency, interval) => {
     const labels = {
@@ -103,20 +119,99 @@ const CategoryCombobox = ({ value, onChange, options }) => {
     );
 };
 
+const SortableItem = ({ id, item, index, handleItemChange, handleRemoveItem, onBlur }) => {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+    } = useSortable({id});
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+    };
+
+    return (
+        <div ref={setNodeRef} style={style} {...attributes} className="flex items-center gap-4">
+            <button type="button" {...listeners} className="cursor-grab p-1">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="1"></circle>
+                    <circle cx="12" cy="5" r="1"></circle>
+                    <circle cx="12" cy="19" r="1"></circle>
+                </svg>
+            </button>
+            <input
+                type="text"
+                value={item.item_name}
+                onChange={(e) => handleItemChange(index, 'item_name', e.target.value)}
+                onBlur={onBlur}
+                className="form-input flex-grow"
+                placeholder="Enter item name"
+            />
+            <button
+                type="button"
+                onClick={() => handleRemoveItem(index)}
+                className="text-danger hover:text-danger-hover"
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+            </button>
+        </div>
+    );
+};
+
 const ChecklistManager = ({ items, name, onNameChange, onItemsChange }) => {
+    const [localItems, setLocalItems] = useState([]);
+    const prevItemsRef = useRef();
+
+    useEffect(() => {
+        if (JSON.stringify(items) !== prevItemsRef.current) {
+            setLocalItems(items.map((item, index) => ({ ...item, id: `temp-${index}` })));
+            prevItemsRef.current = JSON.stringify(items);
+        }
+    }, [items]);
+
+    const sensors = useSensors(
+        useSensor(PointerSensor),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
+
     const handleItemChange = (index, field, value) => {
-        const newItems = [...items];
+        const newItems = [...localItems];
         newItems[index] = { ...newItems[index], [field]: value };
-        onItemsChange(newItems);
+        setLocalItems(newItems);
+    };
+
+    const handleBlur = () => {
+        onItemsChange(localItems.map(({id, ...rest}) => rest));
     };
 
     const handleAddItem = () => {
-        onItemsChange([...items, { item_name: ''}]);
+        const newItem = { item_name: '', id: `temp-new-${Date.now()}` };
+        const newItems = [...localItems, newItem];
+        setLocalItems(newItems);
+        onItemsChange(newItems.map(({id, ...rest}) => rest));
     };
 
     const handleRemoveItem = (index) => {
-        const newItems = items.filter((_, i) => i !== index);
-        onItemsChange(newItems);
+        const newItems = localItems.filter((_, i) => i !== index);
+        setLocalItems(newItems);
+        onItemsChange(newItems.map(({id, ...rest}) => rest));
+    };
+
+    const handleDragEnd = (event) => {
+        const {active, over} = event;
+
+        if (active.id !== over.id) {
+            const oldIndex = localItems.findIndex(item => item.id === active.id);
+            const newIndex = localItems.findIndex(item => item.id === over.id);
+            const newOrder = arrayMove(localItems, oldIndex, newIndex);
+            setLocalItems(newOrder);
+            onItemsChange(newOrder.map(({id, ...rest}) => rest));
+        }
     };
 
     return (
@@ -134,24 +229,30 @@ const ChecklistManager = ({ items, name, onNameChange, onItemsChange }) => {
                 />
             </div>
             <h4 className="font-semibold text-text-secondary">Items</h4>
-            {items.map((item, index) => (
-                <div key={index} className="flex items-center gap-4">
-                    <input
-                        type="text"
-                        value={item.item_name}
-                        onChange={(e) => handleItemChange(index, 'item_name', e.target.value)}
-                        className="form-input flex-grow"
-                        placeholder="Enter item name"
-                    />
-                    <button
-                        type="button"
-                        onClick={() => handleRemoveItem(index)}
-                        className="text-danger hover:text-danger-hover"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
-                    </button>
-                </div>
-            ))}
+            <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+            >
+                <SortableContext
+                    items={localItems.map(i => i.id)}
+                    strategy={verticalListSortingStrategy}
+                >
+                    <div className="space-y-2">
+                        {localItems.map((item, index) => (
+                            <SortableItem
+                                key={item.id}
+                                id={item.id}
+                                item={item}
+                                index={index}
+                                handleItemChange={handleItemChange}
+                                handleRemoveItem={handleRemoveItem}
+                                onBlur={handleBlur}
+                            />
+                        ))}
+                    </div>
+                </SortableContext>
+            </DndContext>
             <button
                 type="button"
                 onClick={handleAddItem}
