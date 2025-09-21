@@ -451,7 +451,13 @@ const ScheduleForm = ({
     const handleFormSubmit = (e) => {
         e.preventDefault();
         
-        const { title, trello_member_ids, start_hour, start_minute, start_ampm, trigger_hour, trigger_minute, trigger_ampm } = formData;
+        const { title, trello_member_ids, start_hour, start_minute, start_ampm, trigger_hour, trigger_minute, trigger_ampm, checklist_items } = formData;
+
+        if (checklist_items && checklist_items.some(item => !item.item_name.trim())) {
+            toast.error('All checklist items must have a name.');
+            setActiveTab('checklist');
+            return;
+        }
 
         // Validation for Start Time
         const startTimeFields = [start_hour, start_minute, start_ampm];

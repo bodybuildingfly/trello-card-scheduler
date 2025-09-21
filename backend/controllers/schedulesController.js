@@ -38,7 +38,7 @@ const scheduleSchema = z.object({
     is_active: z.boolean().optional(),
     checklist_name: z.string().optional().nullable(),
     checklist_items: z.array(z.object({
-        item_name: z.string(),
+        item_name: z.string().min(1, { message: "Checklist item name cannot be empty." }),
     })).optional(),
 });
 
