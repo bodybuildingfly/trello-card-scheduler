@@ -1,4 +1,5 @@
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
+import { toast } from 'react-toastify';
 import apiClient, { setupInterceptors } from '../api'; // Import the new setup function
 
 // 1. Create the context
@@ -23,16 +24,24 @@ export const AuthProvider = ({ children }) => {
 
     /**
      * @description Logs out the current user by calling the logout endpoint and clearing local state.
+     * @param {boolean} sessionExpired - Indicates if the logout is due to an expired session.
      */
-    const logout = useCallback(async () => {
+    const logout = useCallback(async (sessionExpired = false) => {
         try {
-            await apiClient.post('/api/auth/logout');
+            // If the session expired, we don't need to call the logout endpoint
+            // because the server-side session is already invalid.
+            if (!sessionExpired) {
+                await apiClient.post('/api/auth/logout');
+            }
         } catch (error) {
             console.error("Logout failed on server, but proceeding with client-side cleanup.", error);
         } finally {
             localStorage.removeItem('userInfo');
             delete apiClient.defaults.headers.common['Authorization'];
             setUser(null);
+            if (sessionExpired) {
+                toast.error("Your session has expired. Please log in again.");
+            }
         }
     }, []);
 

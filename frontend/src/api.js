@@ -77,10 +77,11 @@ export const setupInterceptors = ({ setUser, logout }) => {
                     // Retry the original request
                     return apiClient(originalRequest);
                 } catch (refreshError) {
-                    // If the refresh token is invalid, logout the user.
-                    processQueue(refreshError, null);
-                    logout();
-                    return Promise.reject(refreshError);
+                    // When refresh fails, reject all queued requests and log the user out.
+                    const rejectionError = new Error("Your session has expired. Please log in again.");
+                    processQueue(rejectionError, null);
+                    logout(true); // Pass true to indicate session expired
+                    return Promise.reject(rejectionError);
                 } finally {
                     isRefreshing = false;
                 }
