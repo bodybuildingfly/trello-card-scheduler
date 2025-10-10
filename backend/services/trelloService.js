@@ -44,10 +44,11 @@ export const getTrelloCard = async (cardId, appSettings) => {
  * @param {object} schedule - The schedule object from the database.
  * @param {object} appSettings - The application settings object.
  * @param {object} [user=null] - The user object, for auditing manual triggers.
+ * @param {string} [runId=null] - The scheduler run ID, for correlating logs.
  * @returns {Promise<{success: boolean, message: string, card?: object, status?: number}>}
  */
-export const processCardCreationForSchedule = async (schedule, appSettings, user = null) => {
-    const logContext = { scheduleId: schedule.id, trigger: user ? 'manual' : 'scheduled' };
+export const processCardCreationForSchedule = async (schedule, appSettings, user = null, runId = null) => {
+    const logContext = { scheduleId: schedule.id, trigger: user ? 'manual' : 'scheduled', runId };
 
     let lastDueDateForCalc = null;
     if (schedule.active_card_id) {

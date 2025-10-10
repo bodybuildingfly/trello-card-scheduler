@@ -115,7 +115,7 @@ const runScheduler = async (appSettings) => {
         for (const schedule of schedules) {
             // The core logic is now centralized in trelloService. 
             // We pass `null` for the user since this is a system-initiated action.
-            await trelloService.processCardCreationForSchedule(schedule, appSettings, null);
+            await trelloService.processCardCreationForSchedule(schedule, appSettings, null, runId);
         }
     } catch (error) {
         await logAuditEvent('ERROR', 'Scheduler run failed with a database error.', { error: String(error), runId });
