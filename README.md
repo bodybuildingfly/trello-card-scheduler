@@ -26,6 +26,7 @@ The Trello Card Scheduler is a full-stack web application designed to automate t
 * **Manual Card Creation:** A "Create Now" button allows users to manually trigger the creation of a Trello card for any schedule, outside of its regular recurring timeline.
 * **Clone Schedules:** Users can easily duplicate an existing schedule with a single click, making it fast and easy to create similar schedules.
 * **Instant Feedback Notifications:** Receive real-time toast notifications for actions like creating, updating, or deleting schedules, providing immediate confirmation of your operations.
+* **Releases Page:** See the latest release notes fetched directly from GitHub to stay informed on updates.
 
 ### For Administrators:
 

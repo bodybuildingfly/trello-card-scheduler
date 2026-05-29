@@ -2,6 +2,7 @@ import { CronJob } from 'cron';
 import pool from '../db.js';
 import * as trelloService from './trelloService.js';
 import logAuditEvent from '../utils/logger.js';
+import crypto from 'crypto';
 
 let cronJob;
 
@@ -106,7 +107,7 @@ export const calculateNextDueDate = (schedule, lastDueDate, now = new Date()) =>
  * @param {object} appSettings - The current application settings.
  */
 const runScheduler = async (appSettings) => {
-    const runId = Math.random().toString(36).substring(2, 8);
+    const runId = crypto.randomBytes(4).toString('hex');
     await logAuditEvent('INFO', 'Scheduler starting evaluation run.', { runId });
     const startTime = Date.now();
     
