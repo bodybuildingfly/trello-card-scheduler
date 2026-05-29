@@ -20,7 +20,7 @@ export const protect = async (req, res, next) => {
 
             // Verify the token using a secret key. We'll need to add this to our settings.
             // For now, we can use a placeholder or an environment variable.
-            const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_default_jwt_secret');
+            const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
             // Find the user by the ID from the token payload and attach it to the request.
             // This makes the user's info available to all subsequent protected routes.
