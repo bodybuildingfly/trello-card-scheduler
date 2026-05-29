@@ -137,10 +137,15 @@ export const createSchedule = async (req, res) => {
         const newSchedule = scheduleResult.rows[0];
 
         if (checklist_items && checklist_items.length > 0) {
-            const itemQuery = 'INSERT INTO checklist_items (schedule_id, item_name) VALUES ($1, $2)';
-            for (const item of checklist_items) {
-                await client.query(itemQuery, [newSchedule.id, item.item_name]);
-            }
+            const values = [];
+            const flatParams = [];
+            checklist_items.forEach((item, index) => {
+                const base = index * 2;
+                values.push(`($${base + 1}, $${base + 2})`);
+                flatParams.push(newSchedule.id, item.item_name);
+            });
+            const itemQuery = `INSERT INTO checklist_items (schedule_id, item_name) VALUES ${values.join(', ')}`;
+            await client.query(itemQuery, flatParams);
         }
 
         await client.query('COMMIT');
@@ -205,10 +210,15 @@ export const updateSchedule = async (req, res) => {
         await client.query('DELETE FROM checklist_items WHERE schedule_id = $1', [id]);
 
         if (checklist_items && checklist_items.length > 0) {
-            const itemQuery = 'INSERT INTO checklist_items (schedule_id, item_name) VALUES ($1, $2)';
-            for (const item of checklist_items) {
-                await client.query(itemQuery, [id, item.item_name]);
-            }
+            const values = [];
+            const flatParams = [];
+            checklist_items.forEach((item, index) => {
+                const base = index * 2;
+                values.push(`($${base + 1}, $${base + 2})`);
+                flatParams.push(id, item.item_name);
+            });
+            const itemQuery = `INSERT INTO checklist_items (schedule_id, item_name) VALUES ${values.join(', ')}`;
+            await client.query(itemQuery, flatParams);
         }
         
         await client.query('COMMIT');
@@ -363,11 +373,16 @@ export const cloneSchedule = async (req, res) => {
 
         let newChecklistItems = [];
         if (originalChecklistItems.length > 0) {
-            const itemQuery = 'INSERT INTO checklist_items (schedule_id, item_name) VALUES ($1, $2) RETURNING *';
-            for (const item of originalChecklistItems) {
-                const newItemResult = await client.query(itemQuery, [clonedSchedule.id, item.item_name]);
-                newChecklistItems.push(newItemResult.rows[0]);
-            }
+            const values = [];
+            const flatParams = [];
+            originalChecklistItems.forEach((item, index) => {
+                const base = index * 2;
+                values.push(`($${base + 1}, $${base + 2})`);
+                flatParams.push(clonedSchedule.id, item.item_name);
+            });
+            const itemQuery = `INSERT INTO checklist_items (schedule_id, item_name) VALUES ${values.join(', ')} RETURNING *`;
+            const newItemResult = await client.query(itemQuery, flatParams);
+            newChecklistItems = newItemResult.rows;
         }
         
         await client.query('COMMIT');
