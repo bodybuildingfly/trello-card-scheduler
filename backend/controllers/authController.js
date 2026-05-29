@@ -9,7 +9,7 @@ import pool from '../db.js';
  * @returns {string} The signed JWT.
  */
 const generateToken = (id) => {
-    return jwt.sign({ id }, process.env.JWT_SECRET || 'your_default_jwt_secret', {
+    return jwt.sign({ id }, process.env.JWT_SECRET, {
         expiresIn: '15m', // Access token expires in 15 minutes
     });
 };

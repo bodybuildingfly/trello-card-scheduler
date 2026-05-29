@@ -83,6 +83,13 @@ if (process.env.NODE_ENV === 'production') {
  * @description The main application start function.
  */
 const startServer = async () => {
+    // Fail-fast on critical missing environment variables
+    if (!process.env.JWT_SECRET) {
+        console.error('[CRITICAL] JWT_SECRET environment variable is not defined.');
+        console.error('The server cannot start securely without a JWT_SECRET.');
+        process.exit(1);
+    }
+
     try {
         await initializeDatabase();
         appSettings = await loadSettings();

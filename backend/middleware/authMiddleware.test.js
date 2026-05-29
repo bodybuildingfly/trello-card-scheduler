@@ -44,7 +44,7 @@ describe('Auth Middleware', () => {
 
       await protect(req, res, next);
 
-      expect(jwt.verify).toHaveBeenCalledWith(mockToken, process.env.JWT_SECRET || 'your_default_jwt_secret');
+      expect(jwt.verify).toHaveBeenCalledWith(mockToken, process.env.JWT_SECRET);
       expect(pool.query).toHaveBeenCalledWith('SELECT id, username, role FROM users WHERE id = $1', [1]);
       expect(req.user).toEqual(mockUser);
       expect(next).toHaveBeenCalled();
