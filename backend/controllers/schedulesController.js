@@ -55,9 +55,19 @@ export const getAllSchedules = async (req, res) => {
         const schedules = scheduleResult.rows;
         const checklistItems = itemsResult.rows;
 
+        // ⚡ Bolt Optimization: Replaced O(N*M) nested loop (Array.filter) with O(N+M) hash map
+        // Reduces time complexity significantly when dealing with many schedules and items
+        const checklistItemsMap = checklistItems.reduce((acc, item) => {
+            if (!acc[item.schedule_id]) {
+                acc[item.schedule_id] = [];
+            }
+            acc[item.schedule_id].push(item);
+            return acc;
+        }, {});
+
         const schedulesWithItems = schedules.map(schedule => ({
             ...schedule,
-            checklist_items: checklistItems.filter(item => item.schedule_id === schedule.id)
+            checklist_items: checklistItemsMap[schedule.id] || []
         }));
 
         const groupedSchedules = schedulesWithItems.reduce((acc, schedule) => {
