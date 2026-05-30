@@ -28,7 +28,8 @@ const {
   toggleScheduleStatus,
   triggerSchedule,
   cloneSchedule,
-  getUniqueCategories
+  getUniqueCategories,
+  validateTimeOrder
 } = await import('./schedulesController.js');
 
 
@@ -450,6 +451,31 @@ describe('Schedules Controller', () => {
 
         expect(res.status).toHaveBeenCalledWith(409);
         expect(res.json).toHaveBeenCalledWith({ message: 'Card is still active.' });
+    });
+  });
+
+  describe('validateTimeOrder', () => {
+    it('returns true when start time is before trigger time', () => {
+      const result = validateTimeOrder('09', '00', 'am', '05', '00', 'pm');
+      expect(result).toBe(true);
+    });
+
+    it('returns false when start time is exactly equal to trigger time', () => {
+      const result = validateTimeOrder('05', '00', 'pm', '05', '00', 'pm');
+      expect(result).toBe(false);
+    });
+
+    it('returns false when start time is after trigger time', () => {
+      const result = validateTimeOrder('06', '00', 'pm', '05', '00', 'pm');
+      expect(result).toBe(false);
+    });
+
+    it('returns true when time variables are null or missing (validation passes)', () => {
+      const result1 = validateTimeOrder(null, null, null, '05', '00', 'pm');
+      expect(result1).toBe(true);
+
+      const result2 = validateTimeOrder('09', '00', 'am', null, null, null);
+      expect(result2).toBe(true);
     });
   });
 

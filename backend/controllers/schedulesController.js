@@ -17,6 +17,13 @@ const timeToMinutes = (hour, minute, ampm) => {
     return h * 60 + m;
 };
 
+export const validateTimeOrder = (start_hour, start_minute, start_ampm, trigger_hour, trigger_minute, trigger_ampm) => {
+    const startTimeInMinutes = timeToMinutes(start_hour, start_minute, start_ampm);
+    const dueTimeInMinutes = timeToMinutes(trigger_hour, trigger_minute, trigger_ampm);
+
+    return !(startTimeInMinutes !== null && dueTimeInMinutes !== null && startTimeInMinutes >= dueTimeInMinutes);
+};
+
 // --- Validation Schemas ---
 const scheduleSchema = z.object({
     title: z.string().min(1, { message: "Title is required." }),
@@ -115,10 +122,7 @@ export const createSchedule = async (req, res) => {
     
     const { title, description, category, trello_member_ids, frequency, frequency_interval, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date, start_hour, start_minute, start_ampm, end_date, trello_label_ids, is_active, checklist_name, checklist_items } = validationResult.data;
 
-    const startTimeInMinutes = timeToMinutes(start_hour, start_minute, start_ampm);
-    const dueTimeInMinutes = timeToMinutes(trigger_hour, trigger_minute, trigger_ampm);
-
-    if (startTimeInMinutes !== null && dueTimeInMinutes !== null && startTimeInMinutes >= dueTimeInMinutes) {
+    if (!validateTimeOrder(start_hour, start_minute, start_ampm, trigger_hour, trigger_minute, trigger_ampm)) {
         return res.status(400).json({ message: "Validation failed.", errors: [{ path: ['start_hour'], message: 'Start time must be before due time.' }] });
     }
     
@@ -176,10 +180,7 @@ export const updateSchedule = async (req, res) => {
     const { id } = req.params;
     const { title, description, category, trello_member_ids, frequency, frequency_interval, frequency_details, trigger_hour, trigger_minute, trigger_ampm, start_date, start_hour, start_minute, start_ampm, end_date, trello_label_ids, is_active, checklist_name, checklist_items } = validationResult.data;
     
-    const startTimeInMinutes = timeToMinutes(start_hour, start_minute, start_ampm);
-    const dueTimeInMinutes = timeToMinutes(trigger_hour, trigger_minute, trigger_ampm);
-
-    if (startTimeInMinutes !== null && dueTimeInMinutes !== null && startTimeInMinutes >= dueTimeInMinutes) {
+    if (!validateTimeOrder(start_hour, start_minute, start_ampm, trigger_hour, trigger_minute, trigger_ampm)) {
         return res.status(400).json({ message: "Validation failed.", errors: [{ path: ['start_hour'], message: 'Start time must be before due time.' }] });
     }
 
