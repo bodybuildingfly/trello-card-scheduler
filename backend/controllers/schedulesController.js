@@ -89,7 +89,7 @@ export const getAllSchedules = async (req, res) => {
         res.status(200).json(groupedSchedules);
     } catch (err) {
         console.error('Failed to load schedules.', err);
-        res.status(500).json({ error: 'Failed to load schedules.', details: err.message });
+        res.status(500).json({ error: 'Failed to load schedules.' });
     }
 };
 
@@ -105,7 +105,7 @@ export const getUniqueCategories = async (req, res) => {
         res.status(200).json(categories);
     } catch (err) {
         console.error('Failed to fetch categories.', err);
-        res.status(500).json({ error: 'Failed to fetch categories.', details: err.message });
+        res.status(500).json({ error: 'Failed to fetch categories.' });
     }
 };
 
