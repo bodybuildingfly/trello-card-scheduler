@@ -98,7 +98,6 @@ describe('Schedules Controller', () => {
       expect(res.status).toHaveBeenCalledWith(500);
       expect(res.json).toHaveBeenCalledWith({
         error: 'Failed to load schedules.',
-        details: 'DB Error',
       });
     });
   });
