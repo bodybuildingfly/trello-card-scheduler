@@ -48,15 +48,12 @@ const createInitialAdmin = async (client) => {
     console.log('[INFO] No admin user found. Creating initial admin account...');
 
     const adminUser = process.env.ADMIN_USERNAME || 'admin';
-    const adminPass = process.env.ADMIN_PASSWORD || 'changeme';
 
     if (!process.env.ADMIN_PASSWORD) {
-        console.warn('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
-        console.warn('!!! WARNING: Using default admin password.                 !!!');
-        console.warn('!!! Please set the ADMIN_PASSWORD environment variable.    !!!');
-        console.warn(`!!! Default credentials: ${adminUser} / ${adminPass}                !!!`);
-        console.warn('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
+        throw new Error('ADMIN_PASSWORD environment variable is required to create the initial admin account.');
     }
+
+    const adminPass = process.env.ADMIN_PASSWORD;
 
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(adminPass, salt);
