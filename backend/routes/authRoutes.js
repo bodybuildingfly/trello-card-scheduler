@@ -1,6 +1,7 @@
 import express from 'express';
 import { loginUser, refreshToken, logoutUser } from '../controllers/authController.js';
 import { protect } from '../middleware/authMiddleware.js';
+import { loginLimiter } from '../middleware/rateLimiter.js';
 
 const router = express.Router();
 
@@ -11,7 +12,7 @@ const router = express.Router();
 // @route   POST /api/auth/login
 // @desc    Authenticate user & get token
 // @access  Public
-router.post('/login', loginUser);
+router.post('/login', loginLimiter, loginUser);
 
 // @route   POST /api/auth/refresh
 // @desc    Refresh access token

@@ -7,7 +7,12 @@ export const testCredentials = async (req, res) => {
         return res.status(400).json({ message: 'API Key and Token are required.' });
     }
     try {
-        await axios.get(`https://api.trello.com/1/members/me?key=${apiKey}&token=${apiToken}`);
+        await axios.get(`https://api.trello.com/1/members/me`, {
+            params: {
+                key: apiKey,
+                token: apiToken
+            }
+        });
         res.status(200).json({ message: 'Connection successful!' });
     } catch (error) {
         let errorMessage = 'Connection failed. Please check your API Key and Token.';
@@ -28,7 +33,13 @@ export const getBoards = async (req, res) => {
         return res.status(400).json({ message: 'Trello credentials are not configured on the server.' });
     }
     try {
-        const response = await axios.get(`https://api.trello.com/1/members/me/boards?fields=name,id&key=${TRELLO_API_KEY}&token=${TRELLO_API_TOKEN}`);
+        const response = await axios.get(`https://api.trello.com/1/members/me/boards`, {
+            params: {
+                fields: 'name,id',
+                key: TRELLO_API_KEY,
+                token: TRELLO_API_TOKEN
+            }
+        });
         res.status(200).json(response.data);
     } catch (error) {
         console.error('[ERROR] Failed to fetch Trello boards:', error.message);
@@ -45,7 +56,13 @@ export const getLists = async (req, res) => {
         return res.status(400).json({ message: 'Trello credentials are not configured on the server.' });
     }
     try {
-        const response = await axios.get(`https://api.trello.com/1/boards/${boardId}/lists?fields=name,id&key=${TRELLO_API_KEY}&token=${TRELLO_API_TOKEN}`);
+        const response = await axios.get(`https://api.trello.com/1/boards/${encodeURIComponent(boardId)}/lists`, {
+            params: {
+                fields: 'name,id',
+                key: TRELLO_API_KEY,
+                token: TRELLO_API_TOKEN
+            }
+        });
         res.status(200).json(response.data);
     } catch (error) {
         console.error(`[ERROR] Failed to fetch lists for board ${boardId}:`, error.message);
@@ -62,7 +79,13 @@ export const getLabels = async (req, res) => {
         return res.status(400).json({ message: 'Trello credentials are not configured on the server.' });
     }
     try {
-        const response = await axios.get(`https://api.trello.com/1/boards/${boardId}/labels?fields=name,id&key=${TRELLO_API_KEY}&token=${TRELLO_API_TOKEN}`);
+        const response = await axios.get(`https://api.trello.com/1/boards/${encodeURIComponent(boardId)}/labels`, {
+            params: {
+                fields: 'name,id',
+                key: TRELLO_API_KEY,
+                token: TRELLO_API_TOKEN
+            }
+        });
         res.status(200).json(response.data);
     } catch (error) {
         console.error(`[ERROR] Failed to fetch labels for board ${boardId}:`, error.message);
