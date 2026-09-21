@@ -185,10 +185,12 @@ export const createTrelloCard = async (schedule, dueDate, appSettings) => {
         const checklistResponse = await axios.post(checklistUrl);
         const newChecklist = checklistResponse.data;
 
-        for (const item of schedule.checklist_items) {
+        // ⚡ Bolt Optimization: Batch external API calls
+        // Run checklist item creations in parallel rather than sequentially
+        await Promise.all(schedule.checklist_items.map((item, index) => {
             const itemUrl = `https://api.trello.com/1/checklists/${newChecklist.id}/checkItems?key=${TRELLO_API_KEY}&token=${TRELLO_API_TOKEN}`;
-            await axios.post(itemUrl, { name: item.item_name, checked: false });
-        }
+            return axios.post(itemUrl, { name: item.item_name, checked: false, pos: index + 1 });
+        }));
     }
     
     return newCard;
